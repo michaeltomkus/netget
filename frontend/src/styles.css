@@ -275,6 +275,29 @@ button.recording {
   color: var(--accent);
 }
 
+.nudge-overlay {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.nudge-pill {
+  background: rgba(17, 24, 39, 0.78);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 999px;
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
 @media (max-width: 480px) {
   .strengths-growth {
     grid-template-columns: 1fr;

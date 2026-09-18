@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE, getSession, gradeSession, submitResponse } from "../api/client";
 import { useSpeechToText } from "../hooks/useSpeechToText";
+import { useLiveNudges } from "../hooks/useLiveNudges";
 import AvatarRenderer, { AvatarState } from "../components/AvatarRenderer";
+import LiveNudgeOverlay from "../components/LiveNudgeOverlay";
 import type { CandidateQuestion, Session } from "../api/types";
 
 const TYPE_LABEL: Record<CandidateQuestion["type"], string> = {
@@ -30,6 +32,7 @@ export default function SessionPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const stt = useSpeechToText(sessionId);
+  const nudges = useLiveNudges(stt.status === "recording", stt.finalText, stt.interimText);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -103,86 +106,91 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="card">
-      <div className="session-meta">
-        <h1>
-          {session.role} <span className="muted">· {session.seniority}</span>
-        </h1>
-        <p className="muted">
-          Question {Math.min(currentIndex + 1, questions.length)} of {questions.length}
-        </p>
-      </div>
+    <>
+      <LiveNudgeOverlay nudges={nudges} />
+      <div className="card">
+        <div className="session-meta">
+          <h1>
+            {session.role} <span className="muted">· {session.seniority}</span>
+          </h1>
+          <p className="muted">
+            Question {Math.min(currentIndex + 1, questions.length)} of {questions.length}
+          </p>
+        </div>
 
-      {!allAnswered && currentQuestion && (
-        <div className="question-block">
-          <div className="interview-stage">
-            <AvatarRenderer state={avatarState} />
-            <div className="stage-text">
-              <span className={`badge badge-${currentQuestion.type}`}>
-                {TYPE_LABEL[currentQuestion.type]}
-              </span>
-              <p className="question-text">{currentQuestion.text}</p>
-              {currentQuestion.ttsAudioBlobRef && (
-                <>
-                  <audio
-                    key={currentQuestion.id}
-                    ref={audioRef}
-                    src={`${API_BASE}${currentQuestion.ttsAudioBlobRef}`}
-                    onPlay={() => setAvatarState("speaking")}
-                    onPause={() => setAvatarState("idle")}
-                    onEnded={() => setAvatarState("idle")}
-                  />
-                  {audioBlocked && (
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => audioRef.current?.play().then(() => setAudioBlocked(false))}
-                    >
-                      ▶ Play question
-                    </button>
-                  )}
-                </>
-              )}
+        {!allAnswered && currentQuestion && (
+          <div className="question-block">
+            <div className="interview-stage">
+              <AvatarRenderer state={avatarState} />
+              <div className="stage-text">
+                <span className={`badge badge-${currentQuestion.type}`}>
+                  {TYPE_LABEL[currentQuestion.type]}
+                </span>
+                <p className="question-text">{currentQuestion.text}</p>
+                {currentQuestion.ttsAudioBlobRef && (
+                  <>
+                    <audio
+                      key={currentQuestion.id}
+                      ref={audioRef}
+                      src={`${API_BASE}${currentQuestion.ttsAudioBlobRef}`}
+                      onPlay={() => setAvatarState("speaking")}
+                      onPause={() => setAvatarState("idle")}
+                      onEnded={() => setAvatarState("idle")}
+                    />
+                    {audioBlocked && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => audioRef.current?.play().then(() => setAudioBlocked(false))}
+                      >
+                        ▶ Play question
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
+
+            <div className="answer-controls">
+              {stt.status !== "recording" ? (
+                <button type="button" className="secondary" onClick={() => stt.start()}>
+                  🎙 Start answering
+                </button>
+              ) : (
+                <button type="button" className="secondary recording" onClick={() => stt.stop()}>
+                  ⏹ Stop recording
+                </button>
+              )}
+              {stt.status === "recording" && (
+                <span className="live-indicator">● live transcript</span>
+              )}
+              {stt.interimText && <span className="interim-preview">{stt.interimText}</span>}
+              {stt.error && <p className="muted">{stt.error}</p>}
+            </div>
+
+            <textarea
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder="Your answer appears here as you speak — or just type it."
+              rows={8}
+            />
+            {error && <p className="error">{error}</p>}
+            <button onClick={onSubmitAnswer} disabled={submitting || !answer.trim()}>
+              {submitting ? "Saving…" : "Submit answer"}
+            </button>
           </div>
+        )}
 
-          <div className="answer-controls">
-            {stt.status !== "recording" ? (
-              <button type="button" className="secondary" onClick={() => stt.start()}>
-                🎙 Start answering
-              </button>
-            ) : (
-              <button type="button" className="secondary recording" onClick={() => stt.stop()}>
-                ⏹ Stop recording
-              </button>
-            )}
-            {stt.status === "recording" && <span className="live-indicator">● live transcript</span>}
-            {stt.interimText && <span className="interim-preview">{stt.interimText}</span>}
-            {stt.error && <p className="muted">{stt.error}</p>}
+        {allAnswered && (
+          <div className="question-block">
+            <p>All {questions.length} questions answered.</p>
+            {error && <p className="error">{error}</p>}
+            <button onClick={onFinish} disabled={finishing}>
+              {finishing ? "Grading your session…" : "Finish & get report card"}
+            </button>
           </div>
-
-          <textarea
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Your answer appears here as you speak — or just type it."
-            rows={8}
-          />
-          {error && <p className="error">{error}</p>}
-          <button onClick={onSubmitAnswer} disabled={submitting || !answer.trim()}>
-            {submitting ? "Saving…" : "Submit answer"}
-          </button>
-        </div>
-      )}
-
-      {allAnswered && (
-        <div className="question-block">
-          <p>All {questions.length} questions answered.</p>
-          {error && <p className="error">{error}</p>}
-          <button onClick={onFinish} disabled={finishing}>
-            {finishing ? "Grading your session…" : "Finish & get report card"}
-          </button>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }

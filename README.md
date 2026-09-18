@@ -18,6 +18,15 @@ as an editable running transcript. Both providers are optional: without
 captions-only (no voice); without `DEEPGRAM_API_KEY` the candidate just
 types. Only `ANTHROPIC_API_KEY` is required for the core loop.
 
+**Phase 3** (done): live in-session nudges while answering — pacing (too
+fast/too slow), filler-word buildup, and long silences — shown as small,
+low-opacity, non-blocking pills in the corner of the screen. Computed
+entirely client-side from the live transcript stream, on a fixed 1s tick,
+with zero LLM involvement and no effect on grading. Nudge text is always
+drawn from a fixed lookup table keyed by a closed set of nudge kinds
+(`pace_fast` / `pace_slow` / `filler_words` / `long_silence`) — delivery and
+behavior only, by design, never answer content or suggested phrasing.
+
 ## Setup
 
 ```bash
@@ -49,9 +58,8 @@ frontend/   React/TypeScript/Vite PWA-to-be. Three pages: schedule a
 docs/       ARCHITECTURE.md — the full system design and phased build plan.
 ```
 
-## What's next (Phase 3+)
+## What's next (Phase 4+)
 
-Live in-session nudges (pacing, filler words, silence — delivery/behavior
-only, never answer content), video capture + presentation grading, dynamic
-stress-test follow-ups, and PWA installability — see
-`docs/ARCHITECTURE.md` §6 for the full phase breakdown.
+Video capture + presentation grading, dynamic stress-test follow-ups, and
+PWA installability — see `docs/ARCHITECTURE.md` §6 for the full phase
+breakdown.
