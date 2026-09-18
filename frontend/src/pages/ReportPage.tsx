@@ -62,6 +62,22 @@ export default function ReportPage() {
         </div>
       </div>
 
+      {result.presentation && (
+        <>
+          <h2>Presentation</h2>
+          <div className="grade-block">
+            <div className="score-row">
+              <span>Attire: {result.presentation.attireScore}/100</span>
+              <span>Framing &amp; lighting: {result.presentation.framingLightingScore}/100</span>
+              <span>Eye contact: {result.presentation.eyeContactScore}/100</span>
+            </div>
+            <p>{result.presentation.attireFeedback}</p>
+            <p>{result.presentation.framingLightingFeedback}</p>
+            <p className="muted">{result.presentation.eyeContactFeedback}</p>
+          </div>
+        </>
+      )}
+
       <h2>Per-question breakdown</h2>
       {result.perQuestion.map((grade) => {
         const question = questionById.get(grade.questionId);

@@ -3,7 +3,8 @@ import { v4 as uuidv4 } from "uuid";
 import { store } from "../db/store.js";
 import { generateQuestionSet } from "../services/questionGeneration.js";
 import { runGradingPipeline } from "../services/grading/gradingPipeline.js";
-import type { Question, Session, Seniority, StressIntensity } from "../types.js";
+import { savePresentationFrames } from "../services/media.js";
+import type { PresentationSignals, Question, Session, Seniority, StressIntensity } from "../types.js";
 
 export const sessionsRouter = Router();
 
@@ -24,7 +25,7 @@ function toCandidateFacingQuestion(q: Question) {
 }
 
 sessionsRouter.post("/", async (req, res) => {
-  const { role, seniority, companyContext, stressIntensity } = req.body ?? {};
+  const { role, seniority, companyContext, stressIntensity, recordingConsent } = req.body ?? {};
 
   if (typeof role !== "string" || role.trim().length === 0) {
     return res.status(400).json({ error: "role is required" });
@@ -59,6 +60,7 @@ sessionsRouter.post("/", async (req, res) => {
       status: "in_progress",
       questionSetId: questionSet.id,
       startedAt: new Date().toISOString(),
+      recordingConsent: recordingConsent === true,
     };
     store.saveSession(session);
 
@@ -110,6 +112,62 @@ sessionsRouter.post("/:id/responses", (req, res) => {
   store.saveResponse(response);
 
   res.status(201).json({ response });
+});
+
+const DATA_URL_PATTERN = /^data:image\/jpeg;base64,(.+)$/;
+const MAX_FRAMES = 10;
+
+// Submitted once, in a batch, at "Finish" — not incrementally per frame.
+// Requires recordingConsent on the session (defense in depth: the frontend
+// already gates camera access behind consent, this just refuses to store
+// frames for a session that never opted in).
+sessionsRouter.post("/:id/presentation", (req, res) => {
+  const session = store.getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: "Session not found" });
+  if (!session.recordingConsent) {
+    return res.status(403).json({ error: "Session does not have recording consent" });
+  }
+
+  const { frames, signals } = req.body ?? {};
+  if (!Array.isArray(frames) || frames.length === 0) {
+    return res.status(400).json({ error: "frames must be a non-empty array of JPEG data URLs" });
+  }
+  if (frames.length > MAX_FRAMES) {
+    return res.status(400).json({ error: `at most ${MAX_FRAMES} frames per session` });
+  }
+  if (!signals || typeof signals.avgBrightness !== "number" || typeof signals.frameCount !== "number") {
+    return res.status(400).json({ error: "signals with at least avgBrightness and frameCount is required" });
+  }
+
+  let buffers: Buffer[];
+  try {
+    buffers = frames.map((dataUrl: unknown) => {
+      if (typeof dataUrl !== "string") throw new Error("each frame must be a data URL string");
+      const match = DATA_URL_PATTERN.exec(dataUrl);
+      if (!match) throw new Error("each frame must be a data:image/jpeg;base64,... URL");
+      return Buffer.from(match[1], "base64");
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : "invalid frame data" });
+  }
+
+  const frameRefs = savePresentationFrames(session.id, buffers);
+  const presentationSignals: PresentationSignals = {
+    frameCount: signals.frameCount,
+    faceDetectedRatio:
+      typeof signals.faceDetectedRatio === "number" ? signals.faceDetectedRatio : undefined,
+    avgOffCenterRatio:
+      typeof signals.avgOffCenterRatio === "number" ? signals.avgOffCenterRatio : undefined,
+    avgBrightness: signals.avgBrightness,
+  };
+
+  store.saveSession({
+    ...session,
+    presentationFrameRefs: frameRefs,
+    presentationSignals,
+  });
+
+  res.status(201).json({ ok: true, frameCount: frameRefs.length });
 });
 
 sessionsRouter.post("/:id/grade", async (req, res) => {

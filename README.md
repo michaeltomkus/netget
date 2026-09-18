@@ -27,6 +27,18 @@ drawn from a fixed lookup table keyed by a closed set of nudge kinds
 (`pace_fast` / `pace_slow` / `filler_words` / `long_silence`) — delivery and
 behavior only, by design, never answer content or suggested phrasing.
 
+**Phase 4** (done): optional camera-based presentation feedback, gated
+behind an explicit consent checkbox at schedule time. With consent, the
+candidate gets a small self-preview and the app periodically (every ~15s)
+samples a frame, computing on-device signals (lighting via a canvas
+brightness read, plus a face-presence/gaze proxy via a client-side MediaPipe
+face-landmark model — network-dependent and feature-detected, so it degrades
+gracefully if it fails to load). At Finish, the sampled frames + signals are
+sent once as a batch to Claude for attire/framing/eye-contact feedback,
+added to the report card — then **the frames are deleted from disk
+immediately after grading**; only the resulting scores/feedback text is
+kept, never the raw images.
+
 ## Setup
 
 ```bash
@@ -58,8 +70,8 @@ frontend/   React/TypeScript/Vite PWA-to-be. Three pages: schedule a
 docs/       ARCHITECTURE.md — the full system design and phased build plan.
 ```
 
-## What's next (Phase 4+)
+## What's next (Phase 5+)
 
-Video capture + presentation grading, dynamic stress-test follow-ups, and
-PWA installability — see `docs/ARCHITECTURE.md` §6 for the full phase
-breakdown.
+Dynamic stress-test follow-ups (live interruptions/pushback via Claude
+Haiku) and PWA installability — see `docs/ARCHITECTURE.md` §6 for the full
+phase breakdown.

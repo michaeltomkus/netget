@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { API_BASE, getSession, gradeSession, submitResponse } from "../api/client";
+import { API_BASE, getSession, gradeSession, submitPresentationData, submitResponse } from "../api/client";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { useLiveNudges } from "../hooks/useLiveNudges";
+import { usePresentationCapture } from "../hooks/usePresentationCapture";
 import AvatarRenderer, { AvatarState } from "../components/AvatarRenderer";
 import LiveNudgeOverlay from "../components/LiveNudgeOverlay";
 import type { CandidateQuestion, Session } from "../api/types";
@@ -33,6 +34,10 @@ export default function SessionPage() {
 
   const stt = useSpeechToText(sessionId);
   const nudges = useLiveNudges(stt.status === "recording", stt.finalText, stt.interimText);
+  // Session-level, not per-question: starts once consent + session are known
+  // and stays active (self-preview + periodic sampling) across all questions
+  // until Finish.
+  const presentation = usePresentationCapture(Boolean(session?.recordingConsent));
 
   useEffect(() => {
     if (!sessionId) return;
@@ -97,6 +102,10 @@ export default function SessionPage() {
     setFinishing(true);
     setError(null);
     try {
+      if (session?.recordingConsent && presentation.frames.length > 0 && presentation.signals) {
+        await submitPresentationData(sessionId, presentation.frames, presentation.signals);
+      }
+      presentation.stop();
       await gradeSession(sessionId);
       navigate(`/session/${sessionId}/report`);
     } catch (err) {
@@ -122,6 +131,13 @@ export default function SessionPage() {
           <div className="question-block">
             <div className="interview-stage">
               <AvatarRenderer state={avatarState} />
+              {session.recordingConsent && (
+                <div className="self-preview">
+                  <video ref={presentation.videoRef} autoPlay muted playsInline />
+                  <span className="self-preview-label">You</span>
+                  {presentation.error && <span className="self-preview-error">{presentation.error}</span>}
+                </div>
+              )}
               <div className="stage-text">
                 <span className={`badge badge-${currentQuestion.type}`}>
                   {TYPE_LABEL[currentQuestion.type]}

@@ -143,6 +143,21 @@ button:disabled {
   color: #92650a;
 }
 
+.consent-label {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.consent-label input {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: auto;
+}
+
 .interview-stage {
   display: flex;
   gap: 16px;
@@ -186,6 +201,40 @@ button:disabled {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+.self-preview {
+  position: relative;
+  flex-shrink: 0;
+  width: 88px;
+}
+
+.self-preview video {
+  width: 88px;
+  height: 66px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #111;
+  transform: scaleX(-1); /* mirror, like a real self-view */
+}
+
+.self-preview-label {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.self-preview-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  max-width: 88px;
 }
 
 .stage-text {
@@ -301,5 +350,9 @@ button.recording {
 @media (max-width: 480px) {
   .strengths-growth {
     grid-template-columns: 1fr;
+  }
+
+  .interview-stage {
+    flex-wrap: wrap;
   }
 }

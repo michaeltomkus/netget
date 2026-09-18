@@ -25,6 +25,28 @@ export interface Session {
   questionSetId: string;
   startedAt?: string;
   endedAt?: string;
+  /** Explicit opt-in, captured at schedule time, before any camera access is requested. */
+  recordingConsent: boolean;
+  /**
+   * Server-local disk paths to sampled presentation frames — never served
+   * publicly, present only between "candidate submitted them at Finish" and
+   * "grading pipeline deleted them after presentation grading" (see
+   * gradingPipeline.ts). Never persisted past grading, per
+   * docs/ARCHITECTURE.md §7 risk #1.
+   */
+  presentationFrameRefs?: string[];
+  presentationSignals?: PresentationSignals;
+}
+
+/** Cheap, on-device-computed signals — never raw video — submitted alongside sampled frames. */
+export interface PresentationSignals {
+  frameCount: number;
+  /** Fraction of sampled frames where a face was detected (0-1), or undefined if MediaPipe was unavailable. */
+  faceDetectedRatio?: number;
+  /** 0 (centered) to ~0.5+ (off to the side); rough nose-offset-from-bbox-center proxy, not true gaze tracking. */
+  avgOffCenterRatio?: number;
+  /** Average canvas pixel luminance, 0-255, as a coarse lighting-quality signal. */
+  avgBrightness: number;
 }
 
 export interface Question {
@@ -62,11 +84,22 @@ export interface PerQuestionGrade {
   structureFeedback: string;
 }
 
+export interface PresentationGrade {
+  attireScore: number; // 0-100
+  attireFeedback: string;
+  framingLightingScore: number; // 0-100
+  framingLightingFeedback: string;
+  eyeContactScore: number; // 0-100
+  eyeContactFeedback: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
   generatedAt: string;
   perQuestion: PerQuestionGrade[];
+  /** Present only when the candidate gave recording consent and at least one frame was captured. */
+  presentation?: PresentationGrade;
   overallScore: number; // 0-100
   overallSummary: string;
   topStrengths: string[];

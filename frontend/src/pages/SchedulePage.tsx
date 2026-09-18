@@ -12,6 +12,7 @@ export default function SchedulePage() {
   const [seniority, setSeniority] = useState<Seniority>("mid");
   const [companyContext, setCompanyContext] = useState("");
   const [stressIntensity, setStressIntensity] = useState<StressIntensity>("medium");
+  const [recordingConsent, setRecordingConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +26,7 @@ export default function SchedulePage() {
         seniority,
         companyContext: companyContext.trim() || undefined,
         stressIntensity,
+        recordingConsent,
       });
       navigate(`/session/${session.id}`);
     } catch (err) {
@@ -84,6 +86,20 @@ export default function SchedulePage() {
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="consent-label">
+          <input
+            type="checkbox"
+            checked={recordingConsent}
+            onChange={(e) => setRecordingConsent(e.target.checked)}
+          />
+          <span>
+            Use my camera during this session for presentation feedback (framing, attire, eye
+            contact). Frames are analyzed right after the session and deleted immediately
+            afterward — not stored. Optional; without this, you'll still get full content and
+            delivery feedback.
+          </span>
         </label>
 
         {error && <p className="error">{error}</p>}

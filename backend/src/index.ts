@@ -11,7 +11,9 @@ const port = Number(process.env.PORT ?? 4000);
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 
 app.use(cors({ origin: corsOrigin.split(",").map((o) => o.trim()) }));
-app.use(express.json({ limit: "1mb" }));
+// 8mb: the presentation-data endpoint accepts a batch of ~8 base64-encoded
+// JPEG frames in one request (see routes/sessions.ts POST /:id/presentation).
+app.use(express.json({ limit: "8mb" }));
 
 app.get("/api/health", (_req, res) => {
   res.json({

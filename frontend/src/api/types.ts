@@ -16,6 +16,14 @@ export interface Session {
   stressIntensity: StressIntensity;
   status: string;
   questionSetId: string;
+  recordingConsent: boolean;
+}
+
+export interface PresentationSignals {
+  frameCount: number;
+  faceDetectedRatio?: number;
+  avgOffCenterRatio?: number;
+  avgBrightness: number;
 }
 
 export interface CandidateQuestion {
@@ -44,11 +52,21 @@ export interface PerQuestionGrade {
   structureFeedback: string;
 }
 
+export interface PresentationGrade {
+  attireScore: number;
+  attireFeedback: string;
+  framingLightingScore: number;
+  framingLightingFeedback: string;
+  eyeContactScore: number;
+  eyeContactFeedback: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
   generatedAt: string;
   perQuestion: PerQuestionGrade[];
+  presentation?: PresentationGrade;
   overallScore: number;
   overallSummary: string;
   topStrengths: string[];

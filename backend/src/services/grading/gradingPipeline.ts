@@ -1,7 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import { store } from "../../db/store.js";
-import type { GradingResult } from "../../types.js";
+import { deletePresentationFrames } from "../media.js";
+import type { GradingResult, PresentationGrade } from "../../types.js";
 import { gradeResponse } from "./contentGrading.js";
+import { gradePresentation } from "./presentationGrading.js";
 import { synthesizeSessionSummary } from "./sessionSummary.js";
 
 // Phase 1: synchronous, in-process grading. Later phases move this behind a
@@ -32,16 +34,39 @@ export async function runGradingPipeline(sessionId: string): Promise<GradingResu
 
   const summary = await synthesizeSessionSummary(questions, responses, perQuestion);
 
+  // Presentation grading only runs if the candidate consented and frames
+  // were actually captured — same graceful-degradation pattern as TTS/STT.
+  // Frames are deleted from disk immediately after grading regardless of
+  // outcome (success or failure): the raw images are never worth keeping
+  // once the derived score/feedback exists, per docs/ARCHITECTURE.md §7
+  // risk #1's privacy-safer default.
+  let presentation: PresentationGrade | undefined;
+  if (session.presentationFrameRefs?.length && session.presentationSignals) {
+    try {
+      presentation = await gradePresentation(session.presentationFrameRefs, session.presentationSignals);
+    } catch (err) {
+      console.warn(`Presentation grading skipped for session ${sessionId}: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      deletePresentationFrames(session.presentationFrameRefs);
+    }
+  }
+
   const result: GradingResult = {
     id: uuidv4(),
     sessionId,
     generatedAt: new Date().toISOString(),
     perQuestion,
+    presentation,
     ...summary,
   };
 
   store.saveGradingResult(result);
-  store.saveSession({ ...session, status: "graded", endedAt: new Date().toISOString() });
+  store.saveSession({
+    ...session,
+    status: "graded",
+    endedAt: new Date().toISOString(),
+    presentationFrameRefs: undefined,
+  });
 
   return result;
 }

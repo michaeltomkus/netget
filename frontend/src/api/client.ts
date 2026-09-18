@@ -1,6 +1,7 @@
 import type {
   CandidateQuestion,
   GradingResult,
+  PresentationSignals,
   ResponseRecord,
   Seniority,
   Session,
@@ -27,6 +28,7 @@ export function createSession(params: {
   seniority: Seniority;
   companyContext?: string;
   stressIntensity: StressIntensity;
+  recordingConsent: boolean;
 }) {
   return request<{ session: Session; questions: CandidateQuestion[] }>("/api/sessions", {
     method: "POST",
@@ -44,6 +46,17 @@ export function submitResponse(sessionId: string, questionId: string, transcript
   return request<{ response: ResponseRecord }>(`/api/sessions/${sessionId}/responses`, {
     method: "POST",
     body: JSON.stringify({ questionId, transcript }),
+  });
+}
+
+export function submitPresentationData(
+  sessionId: string,
+  frames: string[],
+  signals: PresentationSignals,
+) {
+  return request<{ ok: true; frameCount: number }>(`/api/sessions/${sessionId}/presentation`, {
+    method: "POST",
+    body: JSON.stringify({ frames, signals }),
   });
 }
 
