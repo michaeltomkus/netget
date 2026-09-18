@@ -42,6 +42,7 @@ export function createSession(params: {
   companyContext?: string;
   stressIntensity: StressIntensity;
   recordingConsent: boolean;
+  scheduledDurationMinutes: number;
 }) {
   return request<{ session: Session; questions: CandidateQuestion[] }>("/api/sessions", {
     method: "POST",

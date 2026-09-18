@@ -33,7 +33,15 @@ export async function runGradingPipeline(sessionId: string): Promise<GradingResu
     }),
   );
 
-  const summary = await synthesizeSessionSummary(questions, responses, perQuestion);
+  const now = new Date();
+  const startedAt = session.startedAt ? new Date(session.startedAt) : new Date(session.createdAt);
+  const actualMinutes = (now.getTime() - startedAt.getTime()) / 60000;
+
+  const summary = await synthesizeSessionSummary(questions, responses, perQuestion, {
+    scheduledMinutes: session.scheduledDurationMinutes,
+    actualMinutes,
+  });
+  const { timeManagementAssessment, ...summaryRest } = summary;
 
   // Presentation grading only runs if the candidate consented and frames
   // were actually captured — same graceful-degradation pattern as TTS/STT.
@@ -75,18 +83,23 @@ export async function runGradingPipeline(sessionId: string): Promise<GradingResu
   const result: GradingResult = {
     id: uuidv4(),
     sessionId,
-    generatedAt: new Date().toISOString(),
+    generatedAt: now.toISOString(),
     perQuestion,
     presentation,
     composureUnderStress,
-    ...summary,
+    timeManagement: {
+      scheduledMinutes: session.scheduledDurationMinutes,
+      actualMinutes,
+      assessment: timeManagementAssessment,
+    },
+    ...summaryRest,
   };
 
   store.saveGradingResult(result);
   store.saveSession({
     ...session,
     status: "graded",
-    endedAt: new Date().toISOString(),
+    endedAt: now.toISOString(),
     presentationFrameRefs: undefined,
   });
 

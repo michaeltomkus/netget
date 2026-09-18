@@ -17,6 +17,7 @@ export interface Session {
   status: string;
   questionSetId: string;
   recordingConsent: boolean;
+  scheduledDurationMinutes: number;
 }
 
 export interface PresentationSignals {
@@ -72,6 +73,12 @@ export interface ComposureGrade {
   overallNarrative: string;
 }
 
+export interface TimeManagement {
+  scheduledMinutes: number;
+  actualMinutes: number;
+  assessment: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
@@ -79,6 +86,7 @@ export interface GradingResult {
   perQuestion: PerQuestionGrade[];
   presentation?: PresentationGrade;
   composureUnderStress?: ComposureGrade;
+  timeManagement: TimeManagement;
   overallScore: number;
   overallSummary: string;
   topStrengths: string[];

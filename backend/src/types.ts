@@ -23,6 +23,8 @@ export interface Session {
   stressIntensity: StressIntensity;
   status: SessionStatus;
   questionSetId: string;
+  /** Candidate-chosen target length for the whole session, set at schedule time. */
+  scheduledDurationMinutes: number;
   startedAt?: string;
   endedAt?: string;
   /** Explicit opt-in, captured at schedule time, before any camera access is requested. */
@@ -112,6 +114,20 @@ export interface ComposureGrade {
   overallNarrative: string;
 }
 
+export interface TimeManagement {
+  scheduledMinutes: number;
+  /** Wall-clock time from session creation to Finish, in minutes. */
+  actualMinutes: number;
+  /**
+   * Qualitative read on the variance — never a bare "ran over/under is bad"
+   * verdict. Good interviews often run long because thorough answers take
+   * longer; the assessment should judge whether the extra or saved time
+   * correlated with answer depth/quality, not treat the raw delta as a
+   * score by itself.
+   */
+  assessment: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
@@ -121,6 +137,7 @@ export interface GradingResult {
   presentation?: PresentationGrade;
   /** Present only when at least one live interruption actually fired during the session. */
   composureUnderStress?: ComposureGrade;
+  timeManagement: TimeManagement;
   overallScore: number; // 0-100
   overallSummary: string;
   topStrengths: string[];

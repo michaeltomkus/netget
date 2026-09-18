@@ -62,6 +62,23 @@ export default function ReportPage() {
         </div>
       </div>
 
+      <h2>Time management</h2>
+      <div className="grade-block">
+        <div className="score-row">
+          <span>Scheduled: {result.timeManagement.scheduledMinutes} min</span>
+          <span>
+            Actual: {Math.round(result.timeManagement.actualMinutes)} min
+            {" "}
+            ({result.timeManagement.actualMinutes >= result.timeManagement.scheduledMinutes ? "+" : "−"}
+            {Math.round(
+              Math.abs(result.timeManagement.actualMinutes - result.timeManagement.scheduledMinutes),
+            )}{" "}
+            min)
+          </span>
+        </div>
+        <p>{result.timeManagement.assessment}</p>
+      </div>
+
       {result.presentation && (
         <>
           <h2>Presentation</h2>

@@ -5,6 +5,7 @@ import type { Seniority, StressIntensity } from "../api/types";
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "staff", "exec"];
 const STRESS_LEVELS: StressIntensity[] = ["low", "medium", "high"];
+const DURATION_OPTIONS = [15, 30, 45, 60];
 
 export default function SchedulePage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function SchedulePage() {
   const [seniority, setSeniority] = useState<Seniority>("mid");
   const [companyContext, setCompanyContext] = useState("");
   const [stressIntensity, setStressIntensity] = useState<StressIntensity>("medium");
+  const [scheduledDurationMinutes, setScheduledDurationMinutes] = useState(30);
   const [recordingConsent, setRecordingConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,7 @@ export default function SchedulePage() {
         seniority,
         companyContext: companyContext.trim() || undefined,
         stressIntensity,
+        scheduledDurationMinutes,
         recordingConsent,
       });
       navigate(`/session/${session.id}`);
@@ -87,6 +90,24 @@ export default function SchedulePage() {
             ))}
           </select>
         </label>
+
+        <label>
+          Scheduled length
+          <select
+            value={scheduledDurationMinutes}
+            onChange={(e) => setScheduledDurationMinutes(Number(e.target.value))}
+          >
+            {DURATION_OPTIONS.map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {minutes} minutes
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted field-hint">
+          Your report notes how your actual time compared to this — running over isn't
+          automatically bad, thorough answers often take longer.
+        </p>
 
         <label className="consent-label">
           <input

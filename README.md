@@ -13,10 +13,13 @@ voice-only answering — see the note after Phase 5.)
 **Phase 2** (done): the interviewer now speaks each question (Azure Neural
 TTS, pre-synthesized and cached per question) through a static avatar with a
 speaking indicator, and the candidate answers by voice — mic audio streams
-to the backend over WebSocket and gets transcribed live (Deepgram). Without
-`AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION` the session falls back to
-captions-only (no voice). Only `ANTHROPIC_API_KEY` is required for the core
-loop.
+to the backend over WebSocket and gets transcribed live (Deepgram). At the
+time this shipped, missing `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION` fell
+back to captions-only — **that fallback no longer exists** now that
+questions are audio-only (see the note further down): without a working
+Azure Speech key, every question hard-blocks. `AZURE_SPEECH_KEY` and
+`DEEPGRAM_API_KEY` are both effectively required in practice, alongside
+`ANTHROPIC_API_KEY`.
 
 **Phase 3** (done): live in-session nudges while answering — pacing (too
 fast/too slow), filler-word buildup, and long silences — shown as small,
@@ -88,6 +91,25 @@ phase — that's a distinct integration (VAPID keys, push subscription
 storage, a backend send endpoint, materially different iOS 16.4+-only
 support) substantial enough to warrant its own pass rather than folding
 silently into "PWA polish."
+
+**Audio-only questions** (post-Phase-6): questions are never shown as text
+on screen — like a real interview, the candidate only hears them, spoken by
+the interviewer avatar. A screen-reader-only element carries the question
+text for accessibility (present in the accessibility tree, not visually
+readable), and a persistent "Replay question" button lets the candidate
+re-hear it at will. If a specific question's audio wasn't synthesized (TTS
+not configured, or a transient per-question failure), that question is
+hard-blocked with a clear message and no text fallback — consistent with
+the voice-only-answering hard block above, there's no silent "just show the
+text" escape hatch.
+
+**Time-aware grading**: scheduling now includes a target length (15/30/45/60
+minutes). The report card compares actual session duration (session creation
+to Finish) against that target and includes a qualitative assessment — not a
+bare "ran over = bad" penalty. Good interviews often run long because
+thorough answers take longer; the grading prompt is explicitly steered to
+judge whether the extra (or saved) time correlated with answer depth, not to
+score the raw time delta by itself.
 
 ## Setup
 

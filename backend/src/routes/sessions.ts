@@ -33,7 +33,8 @@ function toCandidateFacingQuestion(q: Question) {
 }
 
 sessionsRouter.post("/", async (req, res) => {
-  const { role, seniority, companyContext, stressIntensity, recordingConsent } = req.body ?? {};
+  const { role, seniority, companyContext, stressIntensity, recordingConsent, scheduledDurationMinutes } =
+    req.body ?? {};
 
   if (typeof role !== "string" || role.trim().length === 0) {
     return res.status(400).json({ error: "role is required" });
@@ -45,6 +46,14 @@ sessionsRouter.post("/", async (req, res) => {
     return res
       .status(400)
       .json({ error: `stressIntensity must be one of ${STRESS_LEVELS.join(", ")}` });
+  }
+  if (
+    typeof scheduledDurationMinutes !== "number" ||
+    !Number.isFinite(scheduledDurationMinutes) ||
+    scheduledDurationMinutes < 5 ||
+    scheduledDurationMinutes > 180
+  ) {
+    return res.status(400).json({ error: "scheduledDurationMinutes must be a number between 5 and 180" });
   }
 
   const sessionId = uuidv4();
@@ -67,6 +76,7 @@ sessionsRouter.post("/", async (req, res) => {
       stressIntensity,
       status: "in_progress",
       questionSetId: questionSet.id,
+      scheduledDurationMinutes,
       startedAt: new Date().toISOString(),
       recordingConsent: recordingConsent === true,
     };

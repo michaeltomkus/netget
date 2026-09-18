@@ -28,7 +28,6 @@ export default function SessionPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
-  const [audioBlocked, setAudioBlocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const interruptionAudioRef = useRef<HTMLAudioElement>(null);
 
@@ -55,17 +54,17 @@ export default function SessionPage() {
   }, [sessionId]);
 
   // Reset per-question UI state and try to auto-play the interviewer's voice.
-  // Browsers can block autoplay if too much time passed since the last user
-  // gesture; audioBlocked drives a manual "Play question" fallback for that.
+  // Questions are audio-only — never shown as text on screen — so if
+  // autoplay is blocked, the candidate relies on the always-visible "Replay
+  // question" button below rather than a text fallback.
   useEffect(() => {
-    setAudioBlocked(false);
     setAvatarState("idle");
     interruptionAudioRef.current?.pause();
     stt.reset();
     if (!currentQuestion?.ttsAudioBlobRef) return;
     const audioEl = audioRef.current;
     if (!audioEl) return;
-    audioEl.play().catch(() => setAudioBlocked(true));
+    audioEl.play().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestion?.id]);
 
@@ -90,6 +89,7 @@ export default function SessionPage() {
   const allAnswered = currentIndex >= questions.length;
   const recordedAnswer = stt.finalText.trim();
   const canSubmit = stt.status === "stopped" && recordedAnswer.length > 0;
+  const questionHasAudio = Boolean(currentQuestion?.ttsAudioBlobRef);
 
   async function onSubmitAnswer() {
     if (!sessionId || !currentQuestion || !recordedAnswer) return;
@@ -154,8 +154,11 @@ export default function SessionPage() {
                 <span className={`badge badge-${currentQuestion.type}`}>
                   {TYPE_LABEL[currentQuestion.type]}
                 </span>
-                <p className="question-text">{currentQuestion.text}</p>
-                {currentQuestion.ttsAudioBlobRef && (
+                {/* Questions are audio-only, like a real interview — never shown as
+                    text on screen. This exists only for screen-reader users, who
+                    already rely on a non-visual channel to "hear" the page. */}
+                <span className="sr-only">{currentQuestion.text}</span>
+                {questionHasAudio && (
                   <>
                     <audio
                       key={currentQuestion.id}
@@ -165,98 +168,110 @@ export default function SessionPage() {
                       onPause={() => setAvatarState("idle")}
                       onEnded={() => setAvatarState("idle")}
                     />
-                    {audioBlocked && (
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => audioRef.current?.play().then(() => setAudioBlocked(false))}
-                      >
-                        ▶ Play question
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => audioRef.current?.play()}
+                    >
+                      🔊 Replay question
+                    </button>
                   </>
                 )}
               </div>
             </div>
 
-            <audio
-              ref={interruptionAudioRef}
-              onPlay={() => setAvatarState("speaking")}
-              onPause={() => setAvatarState("idle")}
-              onEnded={() => setAvatarState("idle")}
-            />
-            {stt.interruptions.length > 0 && (
-              <div className="interruption-banner">
-                <strong>Interviewer interrupts:</strong>{" "}
-                {stt.interruptions[stt.interruptions.length - 1].text}
-              </div>
-            )}
-
-            {/* Voice is the only response modality — no text input. Recording
-                state drives everything below; there is no editable field. */}
-            {stt.status === "error" ? (
+            {!questionHasAudio ? (
               <div className="voice-blocked">
-                <p className="error">
-                  Voice answering is unavailable for this session: {stt.error}
-                </p>
+                <p className="error">Question audio unavailable</p>
                 <p className="muted">
-                  This mock interview requires a spoken response — there is no text input.
-                  Check your microphone/browser permissions, then try again.
+                  This session delivers questions by voice only — there's no text shown on
+                  screen. This question's audio wasn't generated (the interviewer voice
+                  service may be unavailable or failed for this question), so it can't be
+                  delivered. Start a new session once voice is configured and working.
                 </p>
-                <button type="button" className="secondary" onClick={() => stt.start()}>
-                  Try again
-                </button>
               </div>
             ) : (
               <>
-                <div className="answer-controls">
-                  {stt.status === "idle" && (
-                    <button type="button" className="secondary" onClick={() => stt.start()}>
-                      🎙 Start answering
-                    </button>
-                  )}
-                  {stt.status === "connecting" && (
-                    <button type="button" className="secondary" disabled>
-                      Connecting…
-                    </button>
-                  )}
-                  {stt.status === "recording" && (
-                    <button type="button" className="secondary recording" onClick={() => stt.stop()}>
-                      ⏹ Stop recording
-                    </button>
-                  )}
-                  {stt.status === "stopped" && (
-                    <button type="button" className="secondary" onClick={() => stt.start()}>
-                      🔁 Record again
-                    </button>
-                  )}
-                  {stt.status === "recording" && (
-                    <span className="live-indicator">● live transcript</span>
-                  )}
-                </div>
+                <audio
+                  ref={interruptionAudioRef}
+                  onPlay={() => setAvatarState("speaking")}
+                  onPause={() => setAvatarState("idle")}
+                  onEnded={() => setAvatarState("idle")}
+                />
+                {stt.interruptions.length > 0 && (
+                  <div className="interruption-banner">
+                    <strong>Interviewer interrupts:</strong>{" "}
+                    {stt.interruptions[stt.interruptions.length - 1].text}
+                  </div>
+                )}
 
-                <div className="transcript-display">
-                  {recordedAnswer || stt.interimText ? (
-                    <>
-                      {recordedAnswer}
-                      {stt.interimText && (
-                        <span className="interim-preview"> {stt.interimText}</span>
+                {/* Voice is the only response modality — no text input. Recording
+                    state drives everything below; there is no editable field. */}
+                {stt.status === "error" ? (
+                  <div className="voice-blocked">
+                    <p className="error">
+                      Voice answering is unavailable for this session: {stt.error}
+                    </p>
+                    <p className="muted">
+                      This mock interview requires a spoken response — there is no text input.
+                      Check your microphone/browser permissions, then try again.
+                    </p>
+                    <button type="button" className="secondary" onClick={() => stt.start()}>
+                      Try again
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="answer-controls">
+                      {stt.status === "idle" && (
+                        <button type="button" className="secondary" onClick={() => stt.start()}>
+                          🎙 Start answering
+                        </button>
                       )}
-                    </>
-                  ) : (
-                    <span className="muted">
-                      Nothing recorded yet — click "Start answering" and speak your response.
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
+                      {stt.status === "connecting" && (
+                        <button type="button" className="secondary" disabled>
+                          Connecting…
+                        </button>
+                      )}
+                      {stt.status === "recording" && (
+                        <button type="button" className="secondary recording" onClick={() => stt.stop()}>
+                          ⏹ Stop recording
+                        </button>
+                      )}
+                      {stt.status === "stopped" && (
+                        <button type="button" className="secondary" onClick={() => stt.start()}>
+                          🔁 Record again
+                        </button>
+                      )}
+                      {stt.status === "recording" && (
+                        <span className="live-indicator">● live transcript</span>
+                      )}
+                    </div>
 
-            {error && <p className="error">{error}</p>}
-            {stt.status !== "error" && (
-              <button onClick={onSubmitAnswer} disabled={submitting || !canSubmit}>
-                {submitting ? "Saving…" : "Submit answer"}
-              </button>
+                    <div className="transcript-display">
+                      {recordedAnswer || stt.interimText ? (
+                        <>
+                          {recordedAnswer}
+                          {stt.interimText && (
+                            <span className="interim-preview"> {stt.interimText}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="muted">
+                          Nothing recorded yet — click "Start answering" and speak your response.
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {error && <p className="error">{error}</p>}
+                {stt.status !== "error" && (
+                  <button onClick={onSubmitAnswer} disabled={submitting || !canSubmit}>
+                    {submitting ? "Saving…" : "Submit answer"}
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
