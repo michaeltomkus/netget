@@ -2,25 +2,28 @@ import type { Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { DeepgramStt } from "../services/stt/deepgramStt.js";
 import type { SttStream } from "../services/stt/ISpeechToText.js";
+import { StressTrigger } from "../services/stress/interviewConductor.js";
 import { store } from "../db/store.js";
 
 interface ClientMessage {
   type: "start" | "stop";
   sessionId?: string;
+  questionId?: string;
 }
 
-// Phase 2 scope: pure audio-in -> transcript-out. Deliberately does NOT
-// persist responses itself — the frontend accumulates the live transcript
-// into an editable field and submits it through the existing REST
-// POST /api/sessions/:id/responses route, same as Phase 1. This keeps the
-// gateway a thin STT proxy rather than duplicating session-state logic that
-// belongs to the Interview Conductor (Phase 5).
+// The Interview Conductor lives here: this gateway is still primarily an
+// audio-in -> transcript-out proxy (responses are persisted via the REST
+// route, same as Phase 1-2), but it now also watches the live transcript for
+// stress-tagged questions and can inject a spoken interruption mid-answer —
+// see services/stress/interviewConductor.ts.
 export function attachSttGateway(server: Server): void {
   const wss = new WebSocketServer({ server, path: "/ws/stt" });
 
   wss.on("connection", (ws) => {
     let sttStream: SttStream | undefined;
     let started = false;
+    let stressTrigger: StressTrigger | undefined;
+    let finalTranscript = "";
 
     ws.on("message", (data, isBinary) => {
       if (!isBinary) {
@@ -38,11 +41,25 @@ export function attachSttGateway(server: Server): void {
             ws.close();
             return;
           }
+
+          const question = msg.questionId ? store.getQuestion(msg.questionId) : undefined;
+          if (question && question.questionSetId === session.questionSetId) {
+            stressTrigger = new StressTrigger(session, question);
+          }
+
           try {
             sttStream = new DeepgramStt().openStream(
               (event) => {
                 if (ws.readyState === WebSocket.OPEN) {
                   ws.send(JSON.stringify({ type: "transcript", ...event }));
+                }
+                if (event.isFinal) {
+                  finalTranscript = finalTranscript ? `${finalTranscript} ${event.text}` : event.text;
+                  stressTrigger?.onFinalSegment(event.text, finalTranscript).then((payload) => {
+                    if (payload && ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ type: "interrupt", ...payload }));
+                    }
+                  });
                 }
               },
               (err) => {

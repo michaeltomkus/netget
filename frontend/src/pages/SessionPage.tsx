@@ -31,8 +31,10 @@ export default function SessionPage() {
   const [avatarState, setAvatarState] = useState<AvatarState>("idle");
   const [audioBlocked, setAudioBlocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const interruptionAudioRef = useRef<HTMLAudioElement>(null);
 
-  const stt = useSpeechToText(sessionId);
+  const currentQuestion = questions[currentIndex];
+  const stt = useSpeechToText(sessionId, currentQuestion?.id);
   const nudges = useLiveNudges(stt.status === "recording", stt.finalText, stt.interimText);
   // Session-level, not per-question: starts once consent + session are known
   // and stays active (self-preview + periodic sampling) across all questions
@@ -53,8 +55,6 @@ export default function SessionPage() {
       .finally(() => setLoading(false));
   }, [sessionId]);
 
-  const currentQuestion = questions[currentIndex];
-
   // Reset per-question UI state and try to auto-play the interviewer's voice.
   // Browsers can block autoplay if too much time passed since the last user
   // gesture; audioBlocked drives a manual "Play question" fallback for that.
@@ -62,6 +62,7 @@ export default function SessionPage() {
     setAnswer("");
     setAudioBlocked(false);
     setAvatarState("idle");
+    interruptionAudioRef.current?.pause();
     stt.reset();
     if (!currentQuestion?.ttsAudioBlobRef) return;
     const audioEl = audioRef.current;
@@ -76,6 +77,20 @@ export default function SessionPage() {
     if (stt.status === "recording") setAnswer(stt.finalText);
   }, [stt.finalText, stt.status]);
 
+  // A new live interruption arrived from the Interview Conductor — play its
+  // audio (if TTS was configured) through a dedicated element so it doesn't
+  // fight with the question-audio element's play/pause wiring, and drive the
+  // avatar the same way question audio does.
+  useEffect(() => {
+    if (stt.interruptions.length === 0) return;
+    const latest = stt.interruptions[stt.interruptions.length - 1];
+    const audioEl = interruptionAudioRef.current;
+    if (latest.audioDataUrl && audioEl) {
+      audioEl.src = latest.audioDataUrl;
+      audioEl.play().catch(() => {});
+    }
+  }, [stt.interruptions.length]);
+
   if (loading) return <div className="card">Loading session…</div>;
   if (error) return <div className="card error">{error}</div>;
   if (!session) return <div className="card error">Session not found.</div>;
@@ -88,7 +103,11 @@ export default function SessionPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await submitResponse(sessionId, currentQuestion.id, answer.trim());
+      const dynamicFollowUps =
+        stt.interruptions.length > 0
+          ? stt.interruptions.map((i) => ({ triggerType: "live_interruption" as const, text: i.text }))
+          : undefined;
+      await submitResponse(sessionId, currentQuestion.id, answer.trim(), dynamicFollowUps);
       setCurrentIndex((i) => i + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -183,6 +202,19 @@ export default function SessionPage() {
               {stt.interimText && <span className="interim-preview">{stt.interimText}</span>}
               {stt.error && <p className="muted">{stt.error}</p>}
             </div>
+
+            <audio
+              ref={interruptionAudioRef}
+              onPlay={() => setAvatarState("speaking")}
+              onPause={() => setAvatarState("idle")}
+              onEnded={() => setAvatarState("idle")}
+            />
+            {stt.interruptions.length > 0 && (
+              <div className="interruption-banner">
+                <strong>Interviewer interrupts:</strong>{" "}
+                {stt.interruptions[stt.interruptions.length - 1].text}
+              </div>
+            )}
 
             <textarea
               value={answer}

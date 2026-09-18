@@ -12,7 +12,17 @@ interface ErrorMessage {
   type: "error";
   message: string;
 }
-type ServerMessage = TranscriptMessage | ErrorMessage;
+interface InterruptMessage {
+  type: "interrupt";
+  text: string;
+  audioDataUrl?: string;
+}
+type ServerMessage = TranscriptMessage | ErrorMessage | InterruptMessage;
+
+export interface LiveInterruption {
+  text: string;
+  audioDataUrl?: string;
+}
 
 // Chrome/Firefox/Edge support audio/webm;codecs=opus, which Deepgram
 // auto-detects and streams directly (see backend deepgramStt.ts). Safari/iOS
@@ -31,16 +41,22 @@ export interface UseSpeechToTextResult {
   finalText: string;
   interimText: string;
   error: string | null;
+  /** Live pushback injected mid-answer by the Interview Conductor, in arrival order — only for stress questions. */
+  interruptions: LiveInterruption[];
   start: () => Promise<void>;
   stop: () => void;
   reset: () => void;
 }
 
-export function useSpeechToText(sessionId: string | undefined): UseSpeechToTextResult {
+export function useSpeechToText(
+  sessionId: string | undefined,
+  questionId: string | undefined,
+): UseSpeechToTextResult {
   const [status, setStatus] = useState<SttStatus>("idle");
   const [finalText, setFinalText] = useState("");
   const [interimText, setInterimText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [interruptions, setInterruptions] = useState<LiveInterruption[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -91,7 +107,7 @@ export function useSpeechToText(sessionId: string | undefined): UseSpeechToTextR
     wsRef.current = ws;
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "start", sessionId }));
+      ws.send(JSON.stringify({ type: "start", sessionId, questionId }));
 
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;
@@ -120,6 +136,8 @@ export function useSpeechToText(sessionId: string | undefined): UseSpeechToTextR
         } else {
           setInterimText(msg.text);
         }
+      } else if (msg.type === "interrupt") {
+        setInterruptions((prev) => [...prev, { text: msg.text, audioDataUrl: msg.audioDataUrl }]);
       } else if (msg.type === "error") {
         setError(msg.message);
         setStatus("error");
@@ -134,7 +152,7 @@ export function useSpeechToText(sessionId: string | undefined): UseSpeechToTextR
     ws.onclose = () => {
       setStatus((prev) => (prev === "error" ? prev : "stopped"));
     };
-  }, [sessionId]);
+  }, [sessionId, questionId]);
 
   const stop = useCallback(() => {
     teardown();
@@ -145,8 +163,9 @@ export function useSpeechToText(sessionId: string | undefined): UseSpeechToTextR
     setFinalText("");
     setInterimText("");
     setError(null);
+    setInterruptions([]);
     setStatus("idle");
   }, []);
 
-  return { status, finalText, interimText, error, start, stop, reset };
+  return { status, finalText, interimText, error, interruptions, start, stop, reset };
 }

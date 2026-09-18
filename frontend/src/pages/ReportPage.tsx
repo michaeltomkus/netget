@@ -78,6 +78,24 @@ export default function ReportPage() {
         </>
       )}
 
+      {result.composureUnderStress && (
+        <>
+          <h2>Composure under stress</h2>
+          <div className="grade-block">
+            <p>{result.composureUnderStress.overallNarrative}</p>
+            {result.composureUnderStress.perStressQuestion.map((c) => (
+              <div key={c.questionId} className="composure-row">
+                <p className="muted question-text">{questionById.get(c.questionId)?.text}</p>
+                <div className="score-row">
+                  <span>Recovery: {c.recoveryScore}/100</span>
+                </div>
+                <p>{c.feedback}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       <h2>Per-question breakdown</h2>
       {result.perQuestion.map((grade) => {
         const question = questionById.get(grade.questionId);

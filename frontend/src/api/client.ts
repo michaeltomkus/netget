@@ -1,5 +1,6 @@
 import type {
   CandidateQuestion,
+  DynamicFollowUp,
   GradingResult,
   PresentationSignals,
   ResponseRecord,
@@ -42,10 +43,15 @@ export function getSession(sessionId: string) {
   );
 }
 
-export function submitResponse(sessionId: string, questionId: string, transcript: string) {
+export function submitResponse(
+  sessionId: string,
+  questionId: string,
+  transcript: string,
+  dynamicFollowUps?: DynamicFollowUp[],
+) {
   return request<{ response: ResponseRecord }>(`/api/sessions/${sessionId}/responses`, {
     method: "POST",
-    body: JSON.stringify({ questionId, transcript }),
+    body: JSON.stringify({ questionId, transcript, dynamicFollowUps }),
   });
 }
 

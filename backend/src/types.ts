@@ -68,12 +68,26 @@ export interface QuestionSet {
   questionIds: string[];
 }
 
+export interface DynamicFollowUp {
+  triggerType: "live_interruption";
+  text: string;
+}
+
 export interface Response {
   id: string;
   sessionId: string;
   questionId: string;
   transcript: string;
   createdAt: string;
+  /**
+   * Live pushback/interruptions the Interview Conductor injected mid-answer
+   * (see gateway/sttGateway.ts), only for type=stress questions. Unlike the
+   * data model sketch in docs/ARCHITECTURE.md §3, there's no separate
+   * respondedTranscript per follow-up — the transcript stays continuous
+   * through an interruption rather than being segmented, so only what was
+   * said to the candidate is logged, not an isolated "response to it".
+   */
+  dynamicFollowUps?: DynamicFollowUp[];
 }
 
 export interface PerQuestionGrade {
@@ -93,6 +107,11 @@ export interface PresentationGrade {
   eyeContactFeedback: string;
 }
 
+export interface ComposureGrade {
+  perStressQuestion: { questionId: string; recoveryScore: number; feedback: string }[];
+  overallNarrative: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
@@ -100,6 +119,8 @@ export interface GradingResult {
   perQuestion: PerQuestionGrade[];
   /** Present only when the candidate gave recording consent and at least one frame was captured. */
   presentation?: PresentationGrade;
+  /** Present only when at least one live interruption actually fired during the session. */
+  composureUnderStress?: ComposureGrade;
   overallScore: number; // 0-100
   overallSummary: string;
   topStrengths: string[];

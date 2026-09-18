@@ -4,7 +4,15 @@ import { store } from "../db/store.js";
 import { generateQuestionSet } from "../services/questionGeneration.js";
 import { runGradingPipeline } from "../services/grading/gradingPipeline.js";
 import { savePresentationFrames } from "../services/media.js";
-import type { PresentationSignals, Question, Session, Seniority, StressIntensity } from "../types.js";
+import type {
+  DynamicFollowUp,
+  PresentationSignals,
+  Question,
+  Response,
+  Session,
+  Seniority,
+  StressIntensity,
+} from "../types.js";
 
 export const sessionsRouter = Router();
 
@@ -93,7 +101,7 @@ sessionsRouter.post("/:id/responses", (req, res) => {
   const session = store.getSession(req.params.id);
   if (!session) return res.status(404).json({ error: "Session not found" });
 
-  const { questionId, transcript } = req.body ?? {};
+  const { questionId, transcript, dynamicFollowUps } = req.body ?? {};
   if (typeof questionId !== "string" || typeof transcript !== "string") {
     return res.status(400).json({ error: "questionId and transcript are required" });
   }
@@ -102,12 +110,26 @@ sessionsRouter.post("/:id/responses", (req, res) => {
     return res.status(400).json({ error: "questionId does not belong to this session" });
   }
 
-  const response = {
+  let validatedFollowUps: DynamicFollowUp[] | undefined;
+  if (dynamicFollowUps !== undefined) {
+    if (
+      !Array.isArray(dynamicFollowUps) ||
+      !dynamicFollowUps.every(
+        (f) => f && f.triggerType === "live_interruption" && typeof f.text === "string",
+      )
+    ) {
+      return res.status(400).json({ error: "dynamicFollowUps must be an array of {triggerType, text}" });
+    }
+    validatedFollowUps = dynamicFollowUps;
+  }
+
+  const response: Response = {
     id: uuidv4(),
     sessionId: session.id,
     questionId,
     transcript,
     createdAt: new Date().toISOString(),
+    dynamicFollowUps: validatedFollowUps,
   };
   store.saveResponse(response);
 

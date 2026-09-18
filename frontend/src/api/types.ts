@@ -36,12 +36,18 @@ export interface CandidateQuestion {
   ttsAudioBlobRef?: string;
 }
 
+export interface DynamicFollowUp {
+  triggerType: "live_interruption";
+  text: string;
+}
+
 export interface ResponseRecord {
   id: string;
   sessionId: string;
   questionId: string;
   transcript: string;
   createdAt: string;
+  dynamicFollowUps?: DynamicFollowUp[];
 }
 
 export interface PerQuestionGrade {
@@ -61,12 +67,18 @@ export interface PresentationGrade {
   eyeContactFeedback: string;
 }
 
+export interface ComposureGrade {
+  perStressQuestion: { questionId: string; recoveryScore: number; feedback: string }[];
+  overallNarrative: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
   generatedAt: string;
   perQuestion: PerQuestionGrade[];
   presentation?: PresentationGrade;
+  composureUnderStress?: ComposureGrade;
   overallScore: number;
   overallSummary: string;
   topStrengths: string[];

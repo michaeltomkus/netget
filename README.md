@@ -39,6 +39,21 @@ added to the report card — then **the frames are deleted from disk
 immediately after grading**; only the resulting scores/feedback text is
 kept, never the raw images.
 
+**Phase 5** (done): live stress-test interruptions. The STT WebSocket
+gateway now acts as a lightweight Interview Conductor — for `stress`-type
+questions, once the candidate's spoken answer crosses a length threshold, it
+rolls against a per-session probability (derived from the session's stress
+intensity) and, if triggered, calls Claude Haiku for a brief in-character
+challenge, synthesizes it via TTS, and pushes it down the same socket as a
+live interruption while the candidate's mic keeps recording underneath —
+capped at one interruption per answer. The candidate sees/hears the pushback
+and is expected to address it in their continuing answer. Interruptions are
+logged and, if any fired during the session, a dedicated Claude call grades
+composure under stress (did they hold their ground or fold) and adds it to
+the report card. All of this degrades gracefully without
+`ANTHROPIC_API_KEY`/`AZURE_SPEECH_*`/`DEEPGRAM_API_KEY` — same pattern as
+every other provider integration so far.
+
 ## Setup
 
 ```bash
@@ -70,8 +85,8 @@ frontend/   React/TypeScript/Vite PWA-to-be. Three pages: schedule a
 docs/       ARCHITECTURE.md — the full system design and phased build plan.
 ```
 
-## What's next (Phase 5+)
+## What's next (Phase 6+)
 
-Dynamic stress-test follow-ups (live interruptions/pushback via Claude
-Haiku) and PWA installability — see `docs/ARCHITECTURE.md` §6 for the full
-phase breakdown.
+PWA installability (home-screen install on Android/iOS, offline-friendly
+scheduling, service worker caching) — see `docs/ARCHITECTURE.md` §6 for the
+full phase breakdown.
