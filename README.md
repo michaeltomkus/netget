@@ -7,16 +7,16 @@ and stress-test questions), and get graded feedback. See
 phased plan.
 
 **Phase 1** (done): scheduling → question generation → typed answers →
-content/structure grading → report card.
+content/structure grading → report card. (Typing was superseded by
+voice-only answering — see the note after Phase 5.)
 
 **Phase 2** (done): the interviewer now speaks each question (Azure Neural
 TTS, pre-synthesized and cached per question) through a static avatar with a
 speaking indicator, and the candidate answers by voice — mic audio streams
-to the backend over WebSocket, gets transcribed live (Deepgram), and shows up
-as an editable running transcript. Both providers are optional: without
+to the backend over WebSocket and gets transcribed live (Deepgram). Without
 `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION` the session falls back to
-captions-only (no voice); without `DEEPGRAM_API_KEY` the candidate just
-types. Only `ANTHROPIC_API_KEY` is required for the core loop.
+captions-only (no voice). Only `ANTHROPIC_API_KEY` is required for the core
+loop.
 
 **Phase 3** (done): live in-session nudges while answering — pacing (too
 fast/too slow), filler-word buildup, and long silences — shown as small,
@@ -53,6 +53,17 @@ composure under stress (did they hold their ground or fold) and adds it to
 the report card. All of this degrades gracefully without
 `ANTHROPIC_API_KEY`/`AZURE_SPEECH_*`/`DEEPGRAM_API_KEY` — same pattern as
 every other provider integration so far.
+
+**Answering is voice-only — deliberately, no text-input fallback.** The
+transcript shown while answering is read-only (what the candidate said, not
+an editable field), and there is no way to type a response instead of
+speaking one. If `DEEPGRAM_API_KEY` isn't configured, or the mic/browser
+isn't available, the question is hard-blocked with a clear message and a
+retry button rather than silently falling back to typing — a candidate
+without working voice input simply cannot answer, by design. (Phase 1's
+original text-only flow no longer exists as a fallback; `DEEPGRAM_API_KEY`
+is effectively required to complete a session, even though it's still
+listed as "optional" in `.env.example` for local dev without voice.)
 
 ## Setup
 
