@@ -65,6 +65,30 @@ original text-only flow no longer exists as a fallback; `DEEPGRAM_API_KEY`
 is effectively required to complete a session, even though it's still
 listed as "optional" in `.env.example` for local dev without voice.)
 
+**Phase 6** (done): PWA installability. A web app manifest + Workbox
+service worker (via `vite-plugin-pwa`) precache the app shell (JS/CSS/HTML/
+icons) so the app installs to the home screen on Android and iOS/iPadOS and
+loads instantly even offline — verified with a real headless-browser test:
+full page reload with the network cut works and renders correctly from
+cache. Deliberately **not** cached: anything under `/api` or the `/ws`
+socket — session data, grading, and live voice always hit the network live,
+never served stale. An offline banner (via the `online`/`offline` browser
+events) tells the candidate plainly that scheduling/voice/grading still need
+a connection even though the shell loaded. iOS gets its own meta tags
+(`apple-mobile-web-app-*`, `apple-touch-icon`) since Safari doesn't read the
+manifest for those. `getUserMedia` failures now carry an extra hint when the
+app is detected running as an installed iOS PWA, suggesting opening the page
+in Safari directly — this is a best-effort mitigation for the risk flagged
+in `docs/ARCHITECTURE.md` §7 risk #4, **not a verified fix**: there's no
+real iOS device or Safari engine available in this build environment, so
+actual iOS home-screen behavior (including whether mic/camera access works
+at all when installed) still needs testing on real hardware before you rely
+on it. Session reminders via Web Push were **deliberately left out** of this
+phase — that's a distinct integration (VAPID keys, push subscription
+storage, a backend send endpoint, materially different iOS 16.4+-only
+support) substantial enough to warrant its own pass rather than folding
+silently into "PWA polish."
+
 ## Setup
 
 ```bash
@@ -96,8 +120,20 @@ frontend/   React/TypeScript/Vite PWA-to-be. Three pages: schedule a
 docs/       ARCHITECTURE.md — the full system design and phased build plan.
 ```
 
-## What's next (Phase 6+)
+## What's next
 
-PWA installability (home-screen install on Android/iOS, offline-friendly
-scheduling, service worker caching) — see `docs/ARCHITECTURE.md` §6 for the
-full phase breakdown.
+All must-have phases (1-5) plus Phase 6 (PWA polish) from
+`docs/ARCHITECTURE.md` §6 are done. Remaining, lower-priority items:
+
+- **Real iOS device QA** — the biggest open risk. Verify home-screen install,
+  `getUserMedia` (mic/camera) behavior in the installed standalone context,
+  and general layout/interaction on actual iOS/iPadOS Safari.
+- **Session reminders via Web Push** — deliberately deferred from Phase 6 (see
+  above).
+- **Phase 8 (multi-provider hardening)** — wire up and A/B the cheaper
+  alternative providers named in the architecture doc (Deepgram is already
+  the default; Cloudflare R2 for storage, etc.) once there's real per-session
+  cost data.
+- **V2 avatar upgrade (Phase 7)** — swap the static image in
+  `AvatarRenderer` for a generated talking-head video; the component's
+  `state` prop was designed for this swap from the start.

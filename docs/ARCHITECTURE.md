@@ -223,8 +223,8 @@ Local video capture/self-preview, client-side MediaPipe landmark signal extracti
 **Phase 5 — Must-have. Stress-test logic.**
 Interview Conductor's dynamic stress-tactic triggering: interruptions, live pushback follow-ups via Haiku 4.5, `dynamicFollowUps` logging, composure-under-stress grading section. Sequenced after Phases 2–4 since it depends on working real-time audio and a working grading pipeline.
 
-**Phase 6 — Nice-to-have / polish. PWA hardening.**
-Home-screen installability across Android and iOS/iPadOS Safari specifically, offline-friendly scheduling UI, session reminders where the platform allows, cross-browser WebRTC/media-permission edge-case handling.
+**Phase 6 — Nice-to-have / polish. PWA hardening. (Done, with caveats — see README.)**
+Home-screen installability across Android and iOS/iPadOS Safari specifically, offline-friendly scheduling UI, session reminders where the platform allows, cross-browser WebRTC/media-permission edge-case handling. Shipped: manifest + service worker (app-shell precaching, verified via a real offline-reload test), iOS meta tags, offline banner, and a best-effort `getUserMedia`-failure hint for installed-iOS-PWA context. Deferred: session reminders (Web Push — a distinct integration). Unverified: actual iOS/iPadOS Safari behavior, since no iOS device or Safari engine was available to test against — real-hardware QA is still owed before relying on the iOS-specific mitigations.
 
 **Phase 7 — Nice-to-have / future. V2 avatar upgrade.**
 Swap the static-avatar renderer for a generated talking-head video behind the same `AvatarRenderer` abstraction established in Phase 2. Likely pairs with a TTS provider exposing viseme/phoneme timing (e.g., ElevenLabs). Out of scope for this build; noted so Phase 2's avatar interface is designed with this swap in mind.

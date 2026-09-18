@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { detectFace } from "../services/faceLandmarks";
+import { iosStandaloneHint } from "../utils/platform";
 import type { PresentationSignals } from "../api/types";
 
 export type CaptureStatus = "idle" | "requesting" | "active" | "denied" | "unsupported";
@@ -83,7 +84,7 @@ export function usePresentationCapture(active: boolean): UsePresentationCaptureR
       .catch(() => {
         if (!cancelled) {
           setStatus("denied");
-          setError("Camera access was denied — presentation feedback will be skipped.");
+          setError(`Camera access was denied — presentation feedback will be skipped.${iosStandaloneHint()}`);
         }
       });
 

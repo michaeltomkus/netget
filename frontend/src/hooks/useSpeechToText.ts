@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WS_BASE } from "../api/client";
+import { iosStandaloneHint } from "../utils/platform";
 
 export type SttStatus = "idle" | "connecting" | "recording" | "stopped" | "error";
 
@@ -26,9 +27,11 @@ export interface LiveInterruption {
 
 // Chrome/Firefox/Edge support audio/webm;codecs=opus, which Deepgram
 // auto-detects and streams directly (see backend deepgramStt.ts). Safari/iOS
-// support here is a known gap — see docs/ARCHITECTURE.md §7 risk #4 — and is
-// flagged for Phase 6 hardening rather than solved here; when no candidate is
-// supported, callers fall back to typing.
+// support here is a known gap — see docs/ARCHITECTURE.md §7 risk #4 — mitigated
+// with a tailored error hint (iosStandaloneHint) below rather than solved
+// outright, since real iOS hardware wasn't available to verify a fix against.
+// There is no typing fallback if no candidate mime type is supported —
+// answering is voice-only by design (see SessionPage's hard-block UI).
 const MIME_CANDIDATES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
 
 function pickSupportedMimeType(): string | undefined {
@@ -88,7 +91,7 @@ export function useSpeechToText(
 
     const mimeType = pickSupportedMimeType();
     if (!mimeType) {
-      setError("Voice recording isn't supported in this browser. Type your answer instead.");
+      setError(`Voice recording isn't supported in this browser.${iosStandaloneHint()}`);
       setStatus("error");
       return;
     }
@@ -97,7 +100,7 @@ export function useSpeechToText(
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError("Microphone access was denied. Type your answer instead.");
+      setError(`Microphone access was denied.${iosStandaloneHint()}`);
       setStatus("error");
       return;
     }

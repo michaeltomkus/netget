@@ -2,8 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>InterviewAI — Mock Interview Practice</title>
+    <meta name="description" content="Self-practice mock interview tool: AI-generated questions, live voice answering, and graded feedback." />
+
+    <meta name="theme-color" content="#4f46e5" />
+
+    <!-- iOS home-screen install: Safari doesn't read the web manifest for these,
+         so they're set explicitly. See docs/ARCHITECTURE.md §7 risk #4 — iOS
+         PWA behavior (including getUserMedia in this standalone context) is a
+         known risk that needs real-device verification, not just these tags. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="InterviewAI" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" href="/icons/icon-192.png" type="image/png" />
   </head>
   <body>
     <div id="root"></div>
