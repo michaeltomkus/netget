@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { getAnthropicClient, MODELS } from "./anthropicClient.js";
+import { attachQuestionAudio } from "./ttsCache.js";
 import { store } from "../db/store.js";
 import type {
   GeneratedQuestionSet,
@@ -104,22 +105,27 @@ Stress intensity for this session: ${params.stressIntensity} (higher intensity s
   const generated = toolUse.input as GeneratedQuestionSet;
 
   const questionSetId = uuidv4();
-  const questionIds: string[] = [];
 
-  generated.questions.forEach((q, index) => {
-    const question: Question = {
-      id: uuidv4(),
-      questionSetId,
-      order: index,
-      type: q.type,
-      text: q.text,
-      idealAnswerCriteria: q.idealAnswerCriteria,
-      expectedStructure: q.expectedStructure,
-      followUpTriggers: q.followUpTriggers,
-    };
-    store.saveQuestion(question);
-    questionIds.push(question.id);
-  });
+  const questions: Question[] = generated.questions.map((q, index) => ({
+    id: uuidv4(),
+    questionSetId,
+    order: index,
+    type: q.type,
+    text: q.text,
+    idealAnswerCriteria: q.idealAnswerCriteria,
+    expectedStructure: q.expectedStructure,
+    followUpTriggers: q.followUpTriggers,
+  }));
+
+  // Pre-synthesize TTS audio for every question now, at schedule time, so
+  // there's zero TTS latency for the scripted portion of the interview
+  // (docs/ARCHITECTURE.md §1.2 step 1). Non-fatal per question: if TTS isn't
+  // configured (or a single call fails), the session still works in
+  // captions-only mode — see attachQuestionAudio in ttsCache.ts.
+  await attachQuestionAudio(questions);
+
+  questions.forEach((question) => store.saveQuestion(question));
+  const questionIds = questions.map((q) => q.id);
 
   const questionSet: QuestionSet = {
     id: questionSetId,

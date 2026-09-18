@@ -36,6 +36,8 @@ export interface Question {
   idealAnswerCriteria: string;
   expectedStructure?: ExpectedStructure;
   followUpTriggers?: string[];
+  /** Public path (served under /media) to the pre-synthesized TTS audio for this question, if TTS is configured. */
+  ttsAudioBlobRef?: string;
 }
 
 export interface QuestionSet {

@@ -24,6 +24,8 @@ export interface CandidateQuestion {
   type: QuestionType;
   text: string;
   expectedStructure?: ExpectedStructure;
+  /** Path (relative to API_BASE) to pre-synthesized TTS audio, if TTS is configured. */
+  ttsAudioBlobRef?: string;
 }
 
 export interface ResponseRecord {

@@ -19,6 +19,7 @@ function toCandidateFacingQuestion(q: Question) {
     type: q.type,
     text: q.text,
     expectedStructure: q.expectedStructure,
+    ttsAudioBlobRef: q.ttsAudioBlobRef,
   };
 }
 

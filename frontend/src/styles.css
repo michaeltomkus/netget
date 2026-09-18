@@ -143,6 +143,88 @@ button:disabled {
   color: #92650a;
 }
 
+.interview-stage {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 88px;
+}
+
+.avatar img {
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  display: block;
+  transition: box-shadow 0.2s ease;
+}
+
+.avatar-speaking img {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.avatar-indicator {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #d1d5db;
+  border: 2px solid var(--card-bg);
+}
+
+.avatar-indicator.on {
+  background: #22c55e;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.stage-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.answer-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+button.recording {
+  color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.live-indicator {
+  color: #16a34a;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.interim-preview {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
 .overall-score {
   display: flex;
   align-items: center;

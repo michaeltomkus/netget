@@ -7,7 +7,8 @@ import type {
   StressIntensity,
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
+export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
+export const WS_BASE = API_BASE.replace(/^http/, "ws");
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
