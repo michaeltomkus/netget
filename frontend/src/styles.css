@@ -1,0 +1,200 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f5f6fa;
+  --card-bg: #ffffff;
+  --text: #1a1c23;
+  --muted: #6b7280;
+  --border: #e2e4e9;
+  --accent: #4f46e5;
+  --accent-contrast: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.brand-sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  align-self: flex-start;
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.session-meta {
+  margin-bottom: 16px;
+}
+
+.question-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.question-text {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.badge {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--accent);
+}
+
+.badge-stress {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge-out_of_box {
+  background: #fef9c3;
+  color: #92650a;
+}
+
+.overall-score {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.score-circle {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.strengths-growth {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.grade-block {
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+}
+
+.answer-preview {
+  font-style: italic;
+}
+
+.score-row {
+  display: flex;
+  gap: 16px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.link-back {
+  display: inline-block;
+  margin-top: 16px;
+  color: var(--accent);
+}
+
+@media (max-width: 480px) {
+  .strengths-growth {
+    grid-template-columns: 1fr;
+  }
+}
