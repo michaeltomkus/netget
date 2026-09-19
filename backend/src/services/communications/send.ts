@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { store } from "../../db/store.js";
 import { renderTemplate } from "./template.js";
 import { dispatchMessage, isChannelConfigured } from "./providers.js";
+import { getBrandVariant } from "../../config/brand.js";
 import type {
   CommunicationChannel,
   CommunicationSendResult,
@@ -94,7 +95,7 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
       const vars: Record<string, string> = {
         email: user.email,
         first_name: user.name?.split(" ")[0] ?? user.email.split("@")[0],
-        app_name: "InterviewAI",
+        app_name: getBrandVariant().name,
         ...params.extraVars,
       };
       const renderedSubject = template.subject ? renderTemplate(template.subject, vars) : undefined;

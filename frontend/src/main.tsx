@@ -5,17 +5,19 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
 import AuthBridge from "./auth/AuthBridge";
 import { initSentry, SentryErrorBoundary } from "./services/sentry";
+import { getBrandVariant } from "./config/brand";
 import "./styles.css";
 
 initSentry();
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+const brand = getBrandVariant();
 
 function ErrorFallback() {
   return (
     <div className="app-shell">
       <div className="voice-blocked">
-        <p className="error">Something went wrong loading InterviewAI.</p>
+        <p className="error">Something went wrong loading {brand.name}.</p>
         <p className="muted">Try reloading the page. If it keeps happening, let us know.</p>
         <button type="button" className="secondary" onClick={() => window.location.reload()}>
           Reload

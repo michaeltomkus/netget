@@ -10,8 +10,10 @@ import SettingsPage from "./pages/SettingsPage";
 import AdminPage from "./pages/AdminPage";
 import OfflineBanner from "./components/OfflineBanner";
 import { useAppUser } from "./hooks/useAppUser";
+import { getBrandVariant } from "./config/brand";
 
 const clerkConfigured = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+const brand = getBrandVariant();
 
 // Only mounted when clerkConfigured, so useAppUser's useAuth() always has a
 // ClerkProvider ancestor — see main.tsx.
@@ -45,8 +47,8 @@ function AppShell({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <OfflineBanner />
       <header className="app-header">
-        <span className="brand">InterviewAI</span>
-        <span className="brand-sub">mock interview practice</span>
+        <span className="brand">{brand.name}</span>
+        <span className="brand-sub">{brand.tagline}</span>
         <HeaderAuthSlot />
       </header>
       <main>{children}</main>
@@ -73,8 +75,8 @@ export default function App() {
       <div className="app-shell">
         <OfflineBanner />
         <header className="app-header">
-          <span className="brand">InterviewAI</span>
-          <span className="brand-sub">mock interview practice</span>
+          <span className="brand">{brand.name}</span>
+          <span className="brand-sub">{brand.tagline}</span>
         </header>
         <main>
           <div className="voice-blocked">

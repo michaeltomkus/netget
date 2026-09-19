@@ -1,0 +1,11 @@
+{
+  "defaultVariant": "control",
+  "variants": {
+    "control": {
+      "name": "InterviewAI",
+      "tagline": "mock interview practice",
+      "description": "Self-practice mock interview tool: AI-generated questions, live voice answering, and graded feedback.",
+      "footerTagline": "Mock interview practice that talks back."
+    }
+  }
+}

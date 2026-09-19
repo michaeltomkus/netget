@@ -14,6 +14,7 @@ import { MEDIA_DIR } from "./services/media.js";
 import { clerkAuth } from "./middleware/auth.js";
 import { globalApiLimiter } from "./middleware/rateLimit.js";
 import { attachExpressErrorHandler, initSentry, isSentryConfigured } from "./services/sentry.js";
+import { getBrandVariant } from "./config/brand.js";
 
 initSentry();
 
@@ -82,5 +83,5 @@ const server = createServer(app);
 attachSttGateway(server);
 
 server.listen(port, () => {
-  console.log(`InterviewAI mock-interview backend listening on :${port}`);
+  console.log(`${getBrandVariant().name} mock-interview backend listening on :${port}`);
 });

@@ -6,6 +6,9 @@ import type { Plan } from "../api/types";
 import { formatPlanPrice } from "../utils/pricing";
 import { setPendingCheckoutPlan } from "../utils/checkoutIntent";
 import { useExperiment } from "../experiments/useExperiment";
+import { getBrandVariant } from "../config/brand";
+
+const brand = getBrandVariant();
 
 // A/B-tested hero section — see experiments/experiments.ts's
 // "landing-hero-copy" entry and useExperiment's usage below. Demonstrates
@@ -15,7 +18,7 @@ const HERO_COPY = {
   control: {
     eyebrow: "AI mock interviews · voice only",
     headline: "Walk into your next interview already having done it.",
-    lede: "InterviewAI asks the questions out loud, times you, and pushes back when it counts. You answer by voice — no typing, no reading ahead — then get a graded report card on content, delivery, and composure.",
+    lede: `${brand.name} asks the questions out loud, times you, and pushes back when it counts. You answer by voice — no typing, no reading ahead — then get a graded report card on content, delivery, and composure.`,
     cta: "Start practicing — free",
   },
   direct: {
@@ -273,7 +276,7 @@ export default function LandingPage() {
       <header className="landing-nav">
         <div className="landing-container landing-nav-row">
           <a href="#top" className="brand">
-            InterviewAI
+            {brand.name}
           </a>
           <nav className="landing-nav-links">
             {NAV_LINKS.map((link) => (
@@ -525,8 +528,8 @@ export default function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-container landing-footer-row">
           <div>
-            <span className="brand">InterviewAI</span>
-            <p className="muted landing-footer-tagline">Mock interview practice that talks back.</p>
+            <span className="brand">{brand.name}</span>
+            <p className="muted landing-footer-tagline">{brand.footerTagline}</p>
           </div>
           <nav className="landing-footer-links">
             {NAV_LINKS.map((link) => (
@@ -535,7 +538,7 @@ export default function LandingPage() {
               </a>
             ))}
           </nav>
-          <p className="muted landing-footer-copy">© 2026 InterviewAI</p>
+          <p className="muted landing-footer-copy">© {new Date().getFullYear()} {brand.name}</p>
         </div>
       </footer>
     </div>

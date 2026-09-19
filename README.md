@@ -309,6 +309,42 @@ pill radius scale, no-gradient rule) supplied as a design handoff doc.
   name (so the handful of call sites that reference it didn't need touching) but is
   now bound to a flat accent color, not a `linear-gradient(...)`.
 
+**Brand name & key verbiage — config-driven, not hardcoded**: the product name
+("InterviewAI"), its tagline, meta description, and footer copy all read from one
+file, `brand.config.json` at the repo root, instead of being typed inline anywhere.
+That's what makes A/B testing the brand itself (not just page copy) possible without
+a code change to every place the name appears.
+
+- **One JSON file, both workspaces.** `brand.config.json` is `{ defaultVariant,
+  variants: { control: { name, tagline, description, footerTagline } } }`. Both
+  `frontend/src/config/brand.ts` and `backend/src/config/brand.ts` read it and expose
+  the same `getBrandVariant(key?)` — the frontend as a normal Vite JSON import (Vite's
+  monorepo-aware dev server already serves files outside `frontend/`), the backend via
+  an `fs.readFileSync` at module load rather than a compile-time TS import, since
+  `tsconfig.json`'s `rootDir: "src"` would otherwise reject importing a file from
+  outside it. An unknown/missing variant key falls back to `defaultVariant` rather
+  than throwing.
+- **Every call site reads through it.** The header/footer brand name+tagline
+  (`App.tsx`, `LandingPage.tsx`), the error-boundary fallback message (`main.tsx`),
+  the hero copy's product-name mention, `index.html`'s `<title>`/meta
+  description/`apple-mobile-web-app-title` (resolved at build time by a small
+  `transformIndexHtml` plugin in `vite.config.ts`, since static HTML can't import
+  JSON), the PWA manifest's `name`/`short_name`/`description`, the backend's startup
+  log line, and the `{app_name}` merge field in outgoing communications (see below)
+  all resolve from this one file now — grep the repo for `InterviewAI` as a literal
+  string and the only hits left are comments explaining this and test fixtures.
+- **Ready for a live brand A/B test, not already running one.** Only one variant
+  ("control", the app's actual current name/copy) ships today — a second brand name
+  wasn't invented here since that's a real content decision, not something to guess
+  at. To test one: add a second entry under `variants` in `brand.config.json`, then
+  wire selection through the same `useExperiment` hook the landing-page hero copy
+  already uses (register a `"brand-identity"` experiment in both
+  `services/experiments.ts` and `experiments/experiments.ts` with those variant keys,
+  call `getBrandVariant(variant)` with the hook's result instead of the no-argument
+  default). Deliberately not wired up preemptively — that would mean logging a
+  brand-identity exposure event on every single page render app-wide before there's
+  a second variant to actually test against.
+
 **End-user communications**: an admin-facing way to compose and send templated,
 multi-channel, A/B-variant messages to end users — a distinct, explicitly requested
 capability from the rest of the admin dashboard's read-only metrics posture (see the
