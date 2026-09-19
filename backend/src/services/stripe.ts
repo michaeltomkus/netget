@@ -43,20 +43,32 @@ const PLAN_DEFINITIONS: PlanDefinition[] = [
   },
 ];
 
-const PLAN_PRICE_ENV_VARS: Record<PlanDefinition["id"], string> = {
-  pro: "STRIPE_PRICE_ID_PRO",
-  premium: "STRIPE_PRICE_ID_PREMIUM",
+// Each plan can have a monthly price id and, optionally, a separate annual
+// one — annual is only offered once its env var is set, same
+// graceful-degradation posture as the rest of this file. Both map to the
+// same plan/tier; a subscriber just picks how often they're billed.
+const PLAN_PRICE_ENV_VARS: Record<PlanDefinition["id"], { monthly: string; annual: string }> = {
+  pro: { monthly: "STRIPE_PRICE_ID_PRO", annual: "STRIPE_PRICE_ID_PRO_ANNUAL" },
+  premium: { monthly: "STRIPE_PRICE_ID_PREMIUM", annual: "STRIPE_PRICE_ID_PREMIUM_ANNUAL" },
 };
 
+export type BillingInterval = "monthly" | "annual";
+
 export interface ConfiguredPlan extends PlanDefinition {
+  /** Monthly price id — the primary/default one; a plan needs at least this to be offered at all. */
   priceId: string;
+  /** Annual price id, if configured. */
+  annualPriceId?: string;
 }
 
-/** Plans with a Stripe Price id actually configured — what checkout offers. */
+/** Plans with at least a monthly Stripe Price id configured — what checkout offers. */
 export function listConfiguredPlans(): ConfiguredPlan[] {
   return PLAN_DEFINITIONS.flatMap((plan) => {
-    const priceId = process.env[PLAN_PRICE_ENV_VARS[plan.id]];
-    return priceId ? [{ ...plan, priceId }] : [];
+    const envVars = PLAN_PRICE_ENV_VARS[plan.id];
+    const priceId = process.env[envVars.monthly];
+    if (!priceId) return [];
+    const annualPriceId = process.env[envVars.annual] || undefined;
+    return [{ ...plan, priceId, annualPriceId }];
   });
 }
 
@@ -64,9 +76,30 @@ export function getConfiguredPlan(planId: string): ConfiguredPlan | undefined {
   return listConfiguredPlans().find((p) => p.id === planId);
 }
 
-/** Reverse lookup — which plan (if any) a subscription's stripePriceId corresponds to. */
+/** Which Stripe Price id checkout should use for a plan + billing interval. */
+export function resolvePriceId(plan: ConfiguredPlan, interval: BillingInterval): string | undefined {
+  return interval === "annual" ? plan.annualPriceId : plan.priceId;
+}
+
+/** Reverse lookup — which plan (if any) a subscription's stripePriceId corresponds to, monthly or annual. */
 export function getPlanByPriceId(priceId: string): PlanDefinition | undefined {
-  return PLAN_DEFINITIONS.find((plan) => process.env[PLAN_PRICE_ENV_VARS[plan.id]] === priceId);
+  return PLAN_DEFINITIONS.find((plan) => {
+    const envVars = PLAN_PRICE_ENV_VARS[plan.id];
+    return process.env[envVars.monthly] === priceId || process.env[envVars.annual] === priceId;
+  });
+}
+
+/**
+ * Optional trial length applied to every new subscription's Checkout
+ * Session, off by default (undefined — no trial). A plain env var rather
+ * than per-plan since Stripe Checkout only supports one trial length per
+ * session; set STRIPE_TRIAL_PERIOD_DAYS to turn it on globally.
+ */
+export function getTrialPeriodDays(): number | undefined {
+  const raw = process.env.STRIPE_TRIAL_PERIOD_DAYS;
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 export function getFrontendBaseUrl(): string {

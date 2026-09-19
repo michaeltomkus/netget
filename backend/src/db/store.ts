@@ -488,6 +488,60 @@ export async function getGradingResultBySession(sessionId: string): Promise<Grad
   return row ? mapGradingResult(row) : undefined;
 }
 
+// ---- Account export/delete ----
+
+// Everything this app stores about one user, for the "download my data"
+// endpoint (routes/me.ts). Raw Prisma rows, not re-mapped through the
+// mapX() helpers above — res.json() already serializes Date via
+// Date#toJSON(), and a data-export response is meant to be the actual
+// stored shape, not the app-level view of it.
+export async function getFullUserExport(userId: string) {
+  const [user, sessions, subscriptions] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.session.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        questionSet: { include: { questions: true } },
+        responses: true,
+        gradingResult: true,
+      },
+    }),
+    prisma.subscription.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
+  ]);
+  return { user, sessions, subscriptions };
+}
+
+// Deletes every row this user owns, in FK-safe order, inside one
+// transaction — used by the account-deletion flow (routes/me.ts). Doesn't
+// touch Stripe or Clerk; the caller cancels the subscription and deletes
+// the Clerk identity itself, since those are separate systems this store
+// doesn't own. Returns the caller's leftover presentation-frame file paths
+// (normally already deleted by the grading pipeline — see services/media.ts
+// — but an abandoned, never-graded session can still have some) so the
+// caller can clean those up from disk too.
+export async function deleteUserAndAllData(userId: string): Promise<{ presentationFrameRefs: string[] }> {
+  const sessions = await prisma.session.findMany({
+    where: { userId },
+    select: { id: true, questionSetId: true, presentationFrameRefs: true },
+  });
+  const sessionIds = sessions.map((s) => s.id);
+  const questionSetIds = sessions.map((s) => s.questionSetId).filter((id): id is string => Boolean(id));
+  const presentationFrameRefs = sessions.flatMap((s) => s.presentationFrameRefs);
+
+  await prisma.$transaction([
+    prisma.response.deleteMany({ where: { sessionId: { in: sessionIds } } }),
+    prisma.gradingResult.deleteMany({ where: { sessionId: { in: sessionIds } } }),
+    prisma.question.deleteMany({ where: { questionSetId: { in: questionSetIds } } }),
+    prisma.questionSet.deleteMany({ where: { sessionId: { in: sessionIds } } }),
+    prisma.session.deleteMany({ where: { id: { in: sessionIds } } }),
+    prisma.subscription.deleteMany({ where: { userId } }),
+    prisma.user.delete({ where: { id: userId } }),
+  ]);
+
+  return { presentationFrameRefs };
+}
+
 // Kept as a namespace object too, for call sites that prefer `store.method()`
 // over named imports — both work identically.
 export const store = {
@@ -517,4 +571,6 @@ export const store = {
   getResponsesBySession,
   saveGradingResult,
   getGradingResultBySession,
+  getFullUserExport,
+  deleteUserAndAllData,
 };

@@ -3,11 +3,21 @@ import {
   getConfiguredPlan,
   getFrontendBaseUrl,
   getPlanByPriceId,
+  getTrialPeriodDays,
   isStripeConfigured,
   listConfiguredPlans,
+  resolvePriceId,
 } from "./stripe.js";
 
-const ENV_KEYS = ["STRIPE_SECRET_KEY", "STRIPE_PRICE_ID_PRO", "STRIPE_PRICE_ID_PREMIUM", "CORS_ORIGIN"] as const;
+const ENV_KEYS = [
+  "STRIPE_SECRET_KEY",
+  "STRIPE_PRICE_ID_PRO",
+  "STRIPE_PRICE_ID_PREMIUM",
+  "STRIPE_PRICE_ID_PRO_ANNUAL",
+  "STRIPE_PRICE_ID_PREMIUM_ANNUAL",
+  "STRIPE_TRIAL_PERIOD_DAYS",
+  "CORS_ORIGIN",
+] as const;
 let savedEnv: Record<string, string | undefined>;
 
 beforeEach(() => {
@@ -74,6 +84,47 @@ describe("getPlanByPriceId", () => {
   it("returns undefined for a price id that matches no configured plan", () => {
     process.env.STRIPE_PRICE_ID_PRO = "price_pro_123";
     expect(getPlanByPriceId("price_totally_unknown")).toBeUndefined();
+  });
+});
+
+describe("resolvePriceId", () => {
+  it("resolves the monthly price by default", () => {
+    process.env.STRIPE_PRICE_ID_PRO = "price_pro_123";
+    const plan = getConfiguredPlan("pro")!;
+    expect(resolvePriceId(plan, "monthly")).toBe("price_pro_123");
+  });
+
+  it("is undefined for annual when no annual price is configured", () => {
+    process.env.STRIPE_PRICE_ID_PRO = "price_pro_123";
+    const plan = getConfiguredPlan("pro")!;
+    expect(resolvePriceId(plan, "annual")).toBeUndefined();
+  });
+
+  it("resolves the annual price once configured", () => {
+    process.env.STRIPE_PRICE_ID_PRO = "price_pro_123";
+    process.env.STRIPE_PRICE_ID_PRO_ANNUAL = "price_pro_annual_789";
+    const plan = getConfiguredPlan("pro")!;
+    expect(resolvePriceId(plan, "annual")).toBe("price_pro_annual_789");
+  });
+});
+
+describe("getTrialPeriodDays", () => {
+  it("is undefined when unset", () => {
+    expect(getTrialPeriodDays()).toBeUndefined();
+  });
+
+  it("is undefined for a non-positive or non-integer value", () => {
+    process.env.STRIPE_TRIAL_PERIOD_DAYS = "0";
+    expect(getTrialPeriodDays()).toBeUndefined();
+    process.env.STRIPE_TRIAL_PERIOD_DAYS = "-3";
+    expect(getTrialPeriodDays()).toBeUndefined();
+    process.env.STRIPE_TRIAL_PERIOD_DAYS = "7.5";
+    expect(getTrialPeriodDays()).toBeUndefined();
+  });
+
+  it("parses a positive integer", () => {
+    process.env.STRIPE_TRIAL_PERIOD_DAYS = "14";
+    expect(getTrialPeriodDays()).toBe(14);
   });
 });
 

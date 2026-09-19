@@ -1,13 +1,16 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import * as store from "../db/store.js";
+import type { BillingInterval } from "../services/stripe.js";
 import {
   getConfiguredPlan,
   getFrontendBaseUrl,
   getPlanByPriceId,
   getStripeClient,
+  getTrialPeriodDays,
   isStripeConfigured,
   listConfiguredPlans,
+  resolvePriceId,
 } from "../services/stripe.js";
 
 export const billingRouter = Router();
@@ -17,18 +20,35 @@ export const billingRouter = Router();
 // ("resets on the 1st") than a rolling window.
 export const FREE_TIER_SESSIONS_PER_MONTH = 3;
 
+// Pro/Premium are marketed as "unlimited" — this isn't a contradiction of
+// that, it's a fair-use abuse backstop (e.g. a leaked/shared token spun up
+// in a scripted loop), set generous enough that no real candidate would
+// ever come close. Distinct from, and on top of, the general per-IP rate
+// limiter in middleware/rateLimit.ts, which isn't plan-aware.
+export const PAID_TIER_FAIR_USE_SESSIONS_PER_DAY = 50;
+
 function startOfCurrentMonth(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
 
-/** Used by routes/sessions.ts to gate session creation. Active subscribers are unlimited. */
-export async function checkFreeTierLimit(userId: string): Promise<{ allowed: boolean; used: number; limit: number }> {
+function startOfToday(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+/** Used by routes/sessions.ts to gate session creation. */
+export async function checkFreeTierLimit(
+  userId: string,
+): Promise<{ allowed: boolean; used: number; limit: number; window: "month" | "day" }> {
   const activeSub = await store.getActiveSubscriptionForUser(userId);
-  if (activeSub) return { allowed: true, used: 0, limit: Infinity };
+  if (activeSub) {
+    const used = await store.countSessionsSince(userId, startOfToday());
+    return { allowed: used < PAID_TIER_FAIR_USE_SESSIONS_PER_DAY, used, limit: PAID_TIER_FAIR_USE_SESSIONS_PER_DAY, window: "day" };
+  }
 
   const used = await store.countSessionsSince(userId, startOfCurrentMonth());
-  return { allowed: used < FREE_TIER_SESSIONS_PER_MONTH, used, limit: FREE_TIER_SESSIONS_PER_MONTH };
+  return { allowed: used < FREE_TIER_SESSIONS_PER_MONTH, used, limit: FREE_TIER_SESSIONS_PER_MONTH, window: "month" };
 }
 
 // Public — deliberately registered before requireAuth() below. A pricing
@@ -44,6 +64,7 @@ billingRouter.get("/plans", async (_req, res) => {
     const plans = await Promise.all(
       listConfiguredPlans().map(async (plan) => {
         const price = await stripe.prices.retrieve(plan.priceId);
+        const annualPrice = plan.annualPriceId ? await stripe.prices.retrieve(plan.annualPriceId) : undefined;
         return {
           id: plan.id,
           name: plan.name,
@@ -51,6 +72,14 @@ billingRouter.get("/plans", async (_req, res) => {
           amountCents: price.unit_amount,
           currency: price.currency,
           interval: price.recurring?.interval,
+          annual: annualPrice
+            ? {
+                amountCents: annualPrice.unit_amount,
+                currency: annualPrice.currency,
+                interval: annualPrice.recurring?.interval,
+              }
+            : undefined,
+          trialPeriodDays: getTrialPeriodDays(),
         };
       }),
     );
@@ -83,10 +112,15 @@ billingRouter.post("/checkout", async (req, res) => {
   if (!isStripeConfigured()) {
     return res.status(503).json({ error: "Billing is not configured" });
   }
-  const { planId } = req.body ?? {};
+  const { planId, interval } = req.body ?? {};
   const plan = typeof planId === "string" ? getConfiguredPlan(planId) : undefined;
   if (!plan) {
     return res.status(400).json({ error: "Unknown or unconfigured planId" });
+  }
+  const billingInterval: BillingInterval = interval === "annual" ? "annual" : "monthly";
+  const priceId = resolvePriceId(plan, billingInterval);
+  if (!priceId) {
+    return res.status(400).json({ error: `${billingInterval} billing is not configured for ${plan.name}` });
   }
 
   const user = req.appUser!;
@@ -115,10 +149,13 @@ billingRouter.post("/checkout", async (req, res) => {
       await store.setUserStripeCustomerId(user.id, customerId);
     }
 
+    const trialPeriodDays = getTrialPeriodDays();
+
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: plan.priceId, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: trialPeriodDays ? { trial_period_days: trialPeriodDays } : undefined,
       success_url: `${baseUrl}/?checkout=success`,
       cancel_url: `${baseUrl}/?checkout=cancelled`,
       client_reference_id: user.id,

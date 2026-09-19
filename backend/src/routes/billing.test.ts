@@ -9,7 +9,9 @@ vi.mock("../db/store.js", () => ({
   countSessionsSince: (...args: [string, Date]) => countSessionsSince(...args),
 }));
 
-const { checkFreeTierLimit, FREE_TIER_SESSIONS_PER_MONTH } = await import("./billing.js");
+const { checkFreeTierLimit, FREE_TIER_SESSIONS_PER_MONTH, PAID_TIER_FAIR_USE_SESSIONS_PER_DAY } = await import(
+  "./billing.js"
+);
 
 const FAKE_SUB: Subscription = {
   id: "sub_row_1",
@@ -29,14 +31,28 @@ describe("checkFreeTierLimit", () => {
     countSessionsSince.mockReset();
   });
 
-  it("is unlimited for a user with an active subscription, regardless of usage", async () => {
+  it("allows a subscriber under the daily fair-use cap", async () => {
     getActiveSubscriptionForUser.mockResolvedValueOnce(FAKE_SUB);
-    countSessionsSince.mockResolvedValueOnce(999); // should never even be consulted
+    countSessionsSince.mockResolvedValueOnce(2);
 
     const result = await checkFreeTierLimit("user_1");
 
-    expect(result).toEqual({ allowed: true, used: 0, limit: Infinity });
-    expect(countSessionsSince).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      allowed: true,
+      used: 2,
+      limit: PAID_TIER_FAIR_USE_SESSIONS_PER_DAY,
+      window: "day",
+    });
+  });
+
+  it("blocks a subscriber who has hit the daily fair-use cap", async () => {
+    getActiveSubscriptionForUser.mockResolvedValueOnce(FAKE_SUB);
+    countSessionsSince.mockResolvedValueOnce(PAID_TIER_FAIR_USE_SESSIONS_PER_DAY);
+
+    const result = await checkFreeTierLimit("user_1");
+
+    expect(result.allowed).toBe(false);
+    expect(result.window).toBe("day");
   });
 
   it("allows a free user under the monthly limit", async () => {
@@ -49,6 +65,7 @@ describe("checkFreeTierLimit", () => {
       allowed: true,
       used: FREE_TIER_SESSIONS_PER_MONTH - 1,
       limit: FREE_TIER_SESSIONS_PER_MONTH,
+      window: "month",
     });
   });
 
@@ -60,6 +77,7 @@ describe("checkFreeTierLimit", () => {
 
     expect(result.allowed).toBe(false);
     expect(result.used).toBe(FREE_TIER_SESSIONS_PER_MONTH);
+    expect(result.window).toBe("month");
   });
 
   it("blocks a free user who has somehow exceeded the monthly limit", async () => {

@@ -174,6 +174,43 @@ force a full re-render of the session page (which is also streaming a live trans
 60 times a second. Degrades gracefully to the old static look wherever there's no real
 audio to analyze (the landing page's hero mock) or the browser lacks Web Audio.
 
+**Accounts & billing hardening**: closes several gaps from the initial billing pass.
+
+- **Sign-in → checkout linking**: clicking "Start Pro/Premium" on the landing page
+  now records the chosen plan (`utils/checkoutIntent.ts`, `sessionStorage`) before
+  opening Clerk's sign-in modal; once signed in and landed on the real Schedule
+  page, `BillingPanel` auto-resumes checkout for that plan instead of dropping the
+  candidate on the free tier and making them find Subscribe again.
+- **Account deletion & data export** (`/settings`, `GET`/`DELETE /api/me`): a
+  GDPR-style "download my data" (every session, response, grading result, and
+  subscription, as JSON) and "delete my account," which cancels any active Stripe
+  subscription first (aborting rather than orphaning a live subscription if that
+  fails), then deletes every local row, then — only once that's confirmed — the
+  Clerk identity itself, in that order specifically so a failure partway through
+  leaves the account intact and safely retryable rather than half-deleted.
+- **Fair-use cap on "unlimited"**: Pro/Premium session creation was previously
+  unbounded. `checkFreeTierLimit` now also gates active subscribers, at a
+  generous 50 sessions/day — an abuse backstop, not a marketing change; no real
+  candidate would ever come close. Distinct from, and layered under, the
+  general per-IP rate limiter.
+- **Optional free trial** (`STRIPE_TRIAL_PERIOD_DAYS`): applies `trial_period_days`
+  to every new subscription's Checkout Session when set. Off by default.
+- **Annual billing option** (`STRIPE_PRICE_ID_{PRO,PREMIUM}_ANNUAL`): a plan is
+  offered at both intervals once both its Price ids are configured; `BillingPanel`
+  shows a monthly/annual toggle only when at least one plan actually has an
+  annual price. The landing page's pricing cards still only show monthly, to keep
+  the public funnel simple — the toggle lives where someone's actually subscribing.
+
+Deliberately **not** built in this pass, and why:
+- **Referral program** — needs product decisions this repo can't make on its own
+  (what the reward is, how a referral is attributed/verified) rather than a
+  shallow, easily-abused version of one.
+- **Admin actions on individual users** (manual comp/grant, cancel/refund from
+  the dashboard) — an earlier, explicit scope decision limited the admin
+  dashboard to metrics only ("use the Stripe dashboard directly for that," per
+  `AdminPage.tsx`); building write-actions there would reverse that decision, so
+  it wasn't done without confirming that's actually wanted.
+
 **Operational hardening**: rate limiting (`express-rate-limit`), a real automated test
 suite, CI, and error monitoring — the highest-priority engineering/ops gaps once this
 stopped being a toy.

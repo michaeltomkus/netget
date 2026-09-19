@@ -1,6 +1,7 @@
 import type {
   AdminMetrics,
   AppUser,
+  BillingInterval,
   BillingStatus,
   CandidateQuestion,
   DynamicFollowUp,
@@ -124,15 +125,26 @@ export function getBillingStatus() {
   return request<BillingStatus>("/api/billing/status");
 }
 
-export function startCheckout(planId: string) {
+export function startCheckout(planId: string, interval: BillingInterval = "monthly") {
   return request<{ url: string }>("/api/billing/checkout", {
     method: "POST",
-    body: JSON.stringify({ planId }),
+    body: JSON.stringify({ planId, interval }),
   });
 }
 
 export function openBillingPortal() {
   return request<{ url: string }>("/api/billing/portal", { method: "POST" });
+}
+
+export function exportAccountData() {
+  // Loosely typed on purpose — this mirrors the raw stored shape (see
+  // backend routes/me.ts), not the app's normal response types, since the
+  // whole point is "everything, as stored."
+  return request<Record<string, unknown>>("/api/me/export");
+}
+
+export function deleteAccount() {
+  return request<{ ok: true }>("/api/me", { method: "DELETE" });
 }
 
 export function getReport(sessionId: string) {

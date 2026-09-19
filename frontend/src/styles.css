@@ -320,6 +320,17 @@ body {
   font-weight: 700;
 }
 
+.billing-interval-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.billing-interval-toggle button {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
 .plan-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1397,4 +1408,49 @@ button.recording {
   .landing-lede {
     max-width: none;
   }
+}
+
+.settings-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-section-title {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.settings-section input[type="text"] {
+  display: block;
+  margin: 10px 0;
+  max-width: 260px;
+}
+
+.settings-confirm-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.danger-zone {
+  padding: 16px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  border-radius: var(--radius-md);
+  border-top: 1px solid var(--danger-border);
+}
+
+button.danger {
+  color: var(--accent-contrast);
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+button.danger:disabled {
+  opacity: 0.5;
 }

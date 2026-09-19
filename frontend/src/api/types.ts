@@ -126,7 +126,17 @@ export interface Plan {
   amountCents: number | null;
   currency: string;
   interval?: string;
+  /** Present only once an annual price is configured for this plan — see backend services/stripe.ts. */
+  annual?: {
+    amountCents: number | null;
+    currency: string;
+    interval?: string;
+  };
+  /** Set globally via STRIPE_TRIAL_PERIOD_DAYS — undefined/0 means no trial. */
+  trialPeriodDays?: number;
 }
+
+export type BillingInterval = "monthly" | "annual";
 
 export interface BillingStatus {
   stripeConfigured: boolean;

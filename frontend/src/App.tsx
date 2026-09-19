@@ -6,6 +6,7 @@ import SchedulePage from "./pages/SchedulePage";
 import SessionPage from "./pages/SessionPage";
 import ReportPage from "./pages/ReportPage";
 import HistoryPage from "./pages/HistoryPage";
+import SettingsPage from "./pages/SettingsPage";
 import AdminPage from "./pages/AdminPage";
 import OfflineBanner from "./components/OfflineBanner";
 import { useAppUser } from "./hooks/useAppUser";
@@ -21,6 +22,9 @@ function HeaderAuthSlot() {
       <SignedIn>
         <Link to="/history" className="admin-link">
           History
+        </Link>
+        <Link to="/settings" className="admin-link">
+          Settings
         </Link>
         {user?.role === "admin" && (
           <Link to="/admin" className="admin-link">
@@ -127,6 +131,16 @@ export default function App() {
           <RequireSignedIn>
             <AppShell>
               <HistoryPage />
+            </AppShell>
+          </RequireSignedIn>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <RequireSignedIn>
+            <AppShell>
+              <SettingsPage />
             </AppShell>
           </RequireSignedIn>
         }

@@ -4,6 +4,7 @@ import AvatarRenderer from "../components/AvatarRenderer";
 import { getPlans } from "../api/client";
 import type { Plan } from "../api/types";
 import { formatPlanPrice } from "../utils/pricing";
+import { setPendingCheckoutPlan } from "../utils/checkoutIntent";
 
 const NAV_LINKS = [
   { href: "#how-it-works", label: "How it works" },
@@ -161,18 +162,35 @@ function Icon({ name }: { name: string }) {
   }
 }
 
-// Every CTA on the landing page opens Clerk's sign-in modal — there's no
-// separate "which plan did you click" flow: once signed in, the candidate
-// lands on the real Schedule page, which has its own BillingPanel to
-// actually subscribe. Keeping the funnel's only job "get them signed in"
-// avoids a second, parallel checkout path outside the authenticated app.
-function CtaButton({ children, className }: { children: ReactNode; className: string }) {
+// Every CTA opens Clerk's sign-in modal — there's no separate checkout flow
+// outside the authenticated app. A pricing-card CTA additionally records
+// which plan was clicked (see utils/checkoutIntent.ts) so that once signed
+// in, the candidate lands on the real Schedule page with checkout for that
+// plan already resumed — see BillingPanel.tsx — instead of landing on the
+// free tier and having to find Subscribe again. Recorded via onClickCapture
+// on a wrapping element (not the button's own onClick) so it fires
+// regardless of whatever click handler Clerk's SignInButton wires onto its
+// cloned child button.
+function CtaButton({
+  children,
+  className,
+  planId,
+}: {
+  children: ReactNode;
+  className: string;
+  planId?: string;
+}) {
   return (
-    <SignInButton mode="modal">
-      <button type="button" className={className}>
-        {children}
-      </button>
-    </SignInButton>
+    <span
+      onClickCapture={planId ? () => setPendingCheckoutPlan(planId) : undefined}
+      style={{ display: "contents" }}
+    >
+      <SignInButton mode="modal">
+        <button type="button" className={className}>
+          {children}
+        </button>
+      </SignInButton>
+    </span>
   );
 }
 
@@ -413,7 +431,7 @@ export default function LandingPage() {
                     Same full report card, every time
                   </li>
                 </ul>
-                <CtaButton className="secondary btn-block">{`Start ${proPlan.name}`}</CtaButton>
+                <CtaButton className="secondary btn-block" planId={proPlan.id}>{`Start ${proPlan.name}`}</CtaButton>
               </div>
             )}
 
@@ -435,7 +453,7 @@ export default function LandingPage() {
                     <Icon name="check" />A recommendation for what to schedule next
                   </li>
                 </ul>
-                <CtaButton className="btn-block">{`Start ${premiumPlan.name}`}</CtaButton>
+                <CtaButton className="btn-block" planId={premiumPlan.id}>{`Start ${premiumPlan.name}`}</CtaButton>
               </div>
             )}
           </div>

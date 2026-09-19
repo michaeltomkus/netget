@@ -93,10 +93,11 @@ sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
 
   const limit = await checkFreeTierLimit(req.appUser!.id);
   if (!limit.allowed) {
-    return res.status(402).json({
-      error: `Free tier limit reached (${limit.used}/${limit.limit} sessions this month). Subscribe to continue.`,
-      freeTier: limit,
-    });
+    const message =
+      limit.window === "day"
+        ? `Daily fair-use limit reached (${limit.used}/${limit.limit} sessions today) — resets tomorrow.`
+        : `Free tier limit reached (${limit.used}/${limit.limit} sessions this month). Subscribe to continue.`;
+    return res.status(402).json({ error: message, usage: limit });
   }
 
   const trimmedRole = role.trim();
