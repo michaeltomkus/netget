@@ -233,6 +233,11 @@ separation) is real and usable today regardless.
 
 ## Setup
 
+Requires Node >=22 (see root `package.json`'s `engines` field) — `jsdom@30`
+and `vitest@5` in the test suites declare that as a hard runtime
+requirement, not just a lint warning; CI runs on Node 22 for the same
+reason.
+
 ```bash
 npm install
 cp .env.example .env   # then add your ANTHROPIC_API_KEY (required),

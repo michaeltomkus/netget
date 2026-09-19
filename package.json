@@ -1,6 +1,9 @@
 {
   "name": "interviewai-mock",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "workspaces": [
     "backend",
     "frontend"

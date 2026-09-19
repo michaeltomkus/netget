@@ -15,7 +15,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Several devDependencies (jsdom@30, vitest@5 in the backend
+          # workspace) declare an engines requirement of Node >=22 — Node 20
+          # doesn't just warn (EBADENGINE), it actually breaks jsdom's
+          # undici-backed fetch/cache polyfill at runtime here. See root
+          # package.json's "engines" field for the same requirement.
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
