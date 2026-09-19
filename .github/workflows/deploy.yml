@@ -1,0 +1,76 @@
+name: Deploy
+
+# Environment tiers, promoted in order: development -> uat -> preprod -> production.
+# development and uat deploy automatically once build-and-test passes. preprod and
+# production are gated behind GitHub Environment "required reviewers" protection
+# rules — the job sits as "Waiting" in the Actions UI until an approver signs off.
+# See docs/ENVIRONMENTS.md for what each tier is for and exactly how to configure
+# those approval gates (this workflow file can declare the gate, but the actual
+# reviewer list has to be set once in repo Settings — no API used in this repo
+# does that for you).
+
+on:
+  push:
+    branches:
+      # This repo's current default/only branch. Update this if/when a
+      # conventional `main` branch is adopted.
+      - claude/build-from-spec-futj8s
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy-development:
+    name: Deploy — development
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: ./scripts/deploy.sh development
+
+  deploy-uat:
+    name: Deploy — UAT
+    needs: deploy-development
+    runs-on: ubuntu-latest
+    environment:
+      name: uat
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: ./scripts/deploy.sh uat
+
+  # --- Escalation path ---
+  # Everything above this line ships automatically once tests pass. Promoting
+  # past UAT is a deliberate, human-approved step: the "environment:" jobs
+  # below pause for review once their GitHub Environment has required
+  # reviewers configured (Settings -> Environments -> preprod / production).
+
+  deploy-preprod:
+    name: Deploy — pre-production (requires approval)
+    needs: deploy-uat
+    runs-on: ubuntu-latest
+    environment:
+      name: preprod
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: ./scripts/deploy.sh preprod
+
+  deploy-production:
+    name: Deploy — production (requires approval)
+    needs: deploy-preprod
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: ./scripts/deploy.sh production

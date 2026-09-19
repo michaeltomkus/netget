@@ -193,8 +193,7 @@ stopped being a toy.
   Web Audio isn't available. This is a starting suite, not full coverage — most UI
   flows are still only verified manually.
 - **CI** (`.github/workflows/ci.yml`): typecheck, test, and build for both workspaces
-  on every push and PR. No deploy step (nothing to deploy to yet) and no lint step
-  (no ESLint config exists in this repo).
+  on every push and PR. No lint step (no ESLint config exists in this repo).
 - **Error monitoring** (Sentry, optional — `SENTRY_DSN`/`VITE_SENTRY_DSN`): backend
   captures uncaught exceptions/rejections automatically once initialized, plus an
   Express error-handling middleware and explicit `captureException()` calls on the
@@ -212,6 +211,25 @@ script only ever runs `vitest run` (used in CI too), never `--ui`, so that surfa
 never exposed; and Sentry's full request-tracing needs Node's `--import` instrumentation
 flag, which this project's plain `tsc`/`tsx` scripts don't set up — error capture
 (the actual ask) works fully without it, so that rework was skipped for now.
+
+**Environment tiers & release escalation** (`.github/workflows/deploy.yml`,
+`docs/ENVIRONMENTS.md`): development -> uat -> preprod -> production, as one
+pipeline that reuses the CI workflow for its build-and-test step. Development
+and UAT deploy automatically once tests pass; preprod and production each sit
+behind a GitHub Environment "required reviewers" gate, so escalating past UAT
+needs an explicit human approval and can't be skipped (`deploy-production`
+depends on an approved `deploy-preprod`, which depends on a successful
+`deploy-uat`). Each tier gets its own env-var reference at
+`deploy/environments/<tier>.env.example` — separate databases and Stripe keys
+per tier (test-mode through preprod, live only in production) is what
+actually keeps a UAT walkthrough from touching real data or charging a real
+card. The two things that can't be set up from here: the actual "required
+reviewers" list on the preprod/production Environments is a one-time,
+repo-admin action in GitHub's Settings UI (exact steps in
+`docs/ENVIRONMENTS.md`), and `scripts/deploy.sh` is a labeled placeholder —
+no hosting provider is chosen yet, so there's nothing real for it to deploy
+to. The pipeline's shape (gate structure, approval requirement, tier
+separation) is real and usable today regardless.
 
 ## Setup
 
@@ -247,6 +265,11 @@ frontend/   React/TypeScript/Vite PWA. Schedule a session, answer questions
             one at a time, view the report card, manage billing, and (for
             admins) view revenue/usage metrics at /admin.
 docs/       ARCHITECTURE.md — the full system design and phased build plan.
+            ENVIRONMENTS.md — environment tiers and the release approval path.
+deploy/     environments/<tier>.env.example — per-tier env var reference
+            (development/uat/preprod/production).
+scripts/    deploy.sh — per-tier deploy hook, invoked by deploy.yml (currently
+            a placeholder — see docs/ENVIRONMENTS.md).
 ```
 
 ## What's next

@@ -3,6 +3,9 @@ name: CI
 on:
   push:
   pull_request:
+  # Lets other workflows (deploy.yml) call this as a reusable job instead of
+  # duplicating the typecheck/test/build steps.
+  workflow_call:
 
 jobs:
   build-and-test:
