@@ -25,9 +25,12 @@ jobs:
       # gitignored) and this Prisma version has no automatic postinstall
       # hook, so backend typecheck/build/test would otherwise fail on
       # missing generated types. This only reads the schema file — no
-      # DATABASE_URL or reachable database needed.
+      # DATABASE_URL or reachable database needed. Run via the workspace
+      # script (not a bare `npx prisma` from the repo root) — npm doesn't
+      # hoist the prisma CLI's bin to the root node_modules/.bin in this
+      # repo, so a root-level `npx prisma` fails with "prisma: not found".
       - name: Generate Prisma client
-        run: npx prisma generate --schema=backend/prisma/schema.prisma
+        run: npm run --workspace backend generate
 
       - name: Backend typecheck
         run: npm run --workspace backend typecheck
