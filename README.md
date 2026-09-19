@@ -283,6 +283,32 @@ layout, or a whole page against real end-user response — not a one-off, hard-c
   same read-only, metrics-only posture as the rest of that dashboard; nothing there can start,
   stop, or edit an experiment.
 
+**Brand / design system**: `frontend/src/styles.css` now implements the "Aptera Call"
+design tokens (dark palette, Space Grotesk/IBM Plex Sans/IBM Plex Mono type stack,
+pill radius scale, no-gradient rule) supplied as a design handoff doc.
+
+- **Scope taken**: the handoff spec describes a live video-call interview product
+  (a Lobby screen, a Main call room with an AI notetaker, live transcript sidebar,
+  and AI-suggested follow-up questions) — none of which exists in this app's actual
+  architecture (audio-only interviews, no video call). Only the **token-level brand
+  system** was applied — colors, type, radii, spacing, motion timing, the
+  no-gradient rule — across this app's real screens (Landing, Schedule, Session,
+  Report, History, Admin). The Lobby/call-room screens themselves weren't built;
+  they're not this product. If a video-call feature is ever wanted, the spec is
+  there to build from.
+- **Dark-only, not dark/light**: the handoff is a single high-contrast dark theme,
+  not a light+dark pair, so `styles.css` dropped its old
+  `prefers-color-scheme: dark` override in favor of one dark theme for everyone
+  (`color-scheme: dark`).
+- **Placeholder tokens, disclosed by the source doc itself**: the handoff explicitly
+  says no confirmed brand assets exist yet and its colors/fonts are mockup
+  placeholders "swap...the moment they're supplied, without changing structure." All
+  values live in `styles.css`'s `:root` block for that reason — updating real brand
+  colors/fonts later is a token edit, not a structural one.
+- **No gradients**: the brand's own rule. `--accent-gradient` is kept as a variable
+  name (so the handful of call sites that reference it didn't need touching) but is
+  now bound to a flat accent color, not a `linear-gradient(...)`.
+
 **Operational hardening**: rate limiting (`express-rate-limit`), a real automated test
 suite, CI, and error monitoring — the highest-priority engineering/ops gaps once this
 stopped being a toy.

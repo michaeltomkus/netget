@@ -13,11 +13,10 @@ export default defineConfig({
         short_name: "InterviewAI",
         description:
           "Self-practice mock interview tool: AI-generated questions, live voice answering, and graded feedback.",
-        theme_color: "#7c3aed",
-        // Matches the dark theme's surface color (styles.css --bg) so the
-        // install/launch splash screen doesn't flash light before the
-        // page's own prefers-color-scheme CSS paints for dark-mode users.
-        background_color: "#08090d",
+        theme_color: "#5b8def",
+        // Matches styles.css --bg — the app is a single dark theme now, so
+        // this is just the base background, not a dark-mode-only fallback.
+        background_color: "#0a0b0d",
         display: "standalone",
         start_url: "/",
         icons: [
