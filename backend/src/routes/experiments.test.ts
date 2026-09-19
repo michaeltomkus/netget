@@ -4,10 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const recordExperimentExposure = vi.fn();
 const recordExperimentConversion = vi.fn();
+const captureException = vi.fn();
 
 vi.mock("../db/store.js", () => ({
   recordExperimentExposure: (...args: [unknown]) => recordExperimentExposure(...args),
   recordExperimentConversion: (...args: [unknown]) => recordExperimentConversion(...args),
+}));
+
+vi.mock("../services/sentry.js", () => ({
+  captureException: (...args: [unknown, unknown?]) => captureException(...args),
 }));
 
 const { experimentsRouter } = await import("./experiments.js");
@@ -22,6 +27,7 @@ function buildApp() {
 beforeEach(() => {
   recordExperimentExposure.mockReset();
   recordExperimentConversion.mockReset();
+  captureException.mockReset();
 });
 
 describe("POST /api/experiments/exposure", () => {
@@ -70,6 +76,19 @@ describe("POST /api/experiments/exposure", () => {
       .send({ experimentKey: "landing-hero-copy", variant: "control", subjectId: "x".repeat(200) });
     expect(res.status).toBe(400);
   });
+
+  it("still responds 204 when the store write throws — a DB hiccup on this pre-auth, high-traffic route must never surface to the caller or crash the process", async () => {
+    recordExperimentExposure.mockRejectedValueOnce(new Error("Can't reach database server"));
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/experiments/exposure")
+      .send({ experimentKey: "landing-hero-copy", variant: "control", subjectId: "anon-1" });
+    expect(res.status).toBe(204);
+    expect(captureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ route: "POST /api/experiments/exposure" }),
+    );
+  });
 });
 
 describe("POST /api/experiments/conversion", () => {
@@ -102,5 +121,18 @@ describe("POST /api/experiments/conversion", () => {
       .post("/api/experiments/conversion")
       .send({ experimentKey: "nope", variant: "x", subjectId: "anon-1", goal: "hero_cta_click" });
     expect(res.status).toBe(400);
+  });
+
+  it("still responds 204 when the store write throws", async () => {
+    recordExperimentConversion.mockRejectedValueOnce(new Error("Can't reach database server"));
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/experiments/conversion")
+      .send({ experimentKey: "landing-hero-copy", variant: "direct", subjectId: "anon-1", goal: "hero_cta_click" });
+    expect(res.status).toBe(204);
+    expect(captureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ route: "POST /api/experiments/conversion" }),
+    );
   });
 });
