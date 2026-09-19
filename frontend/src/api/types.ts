@@ -20,6 +20,17 @@ export interface Session {
   scheduledDurationMinutes: number;
 }
 
+export interface SessionListItem {
+  id: string;
+  createdAt: string;
+  role: string;
+  seniority: Seniority;
+  stressIntensity: StressIntensity;
+  status: string;
+  scheduledDurationMinutes: number;
+  overallScore?: number;
+}
+
 export interface PresentationSignals {
   frameCount: number;
   faceDetectedRatio?: number;

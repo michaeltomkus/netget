@@ -15,6 +15,7 @@ import type {
   ComposureGrade,
   TimeManagement,
   ImprovementPlan,
+  SessionListItem,
 } from "../types.js";
 
 // Prisma-backed store, replacing the flat-JSON-file version used through
@@ -285,6 +286,45 @@ export async function countSessionsSince(userId: string, since: Date): Promise<n
   return prisma.session.count({ where: { userId, createdAt: { gte: since } } });
 }
 
+/** Session history — newest first, with each session's overallScore (once graded) folded in so the list needs no follow-up query. */
+export async function listSessionsForUser(
+  userId: string,
+  params: { limit: number; offset: number },
+): Promise<{ sessions: SessionListItem[]; total: number }> {
+  const [rows, total] = await Promise.all([
+    prisma.session.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: params.limit,
+      skip: params.offset,
+      select: {
+        id: true,
+        createdAt: true,
+        role: true,
+        seniority: true,
+        stressIntensity: true,
+        status: true,
+        scheduledDurationMinutes: true,
+        gradingResult: { select: { overallScore: true } },
+      },
+    }),
+    prisma.session.count({ where: { userId } }),
+  ]);
+
+  const sessions: SessionListItem[] = rows.map((row) => ({
+    id: row.id,
+    createdAt: row.createdAt.toISOString(),
+    role: row.role,
+    seniority: row.seniority as Session["seniority"],
+    stressIntensity: row.stressIntensity as Session["stressIntensity"],
+    status: row.status as Session["status"],
+    scheduledDurationMinutes: row.scheduledDurationMinutes,
+    overallScore: row.gradingResult?.overallScore,
+  }));
+
+  return { sessions, total };
+}
+
 export async function countAllSessions(): Promise<number> {
   return prisma.session.count();
 }
@@ -466,6 +506,7 @@ export const store = {
   deleteSession,
   updateSession,
   countSessionsSince,
+  listSessionsForUser,
   countAllSessions,
   countSessionsSinceAllUsers,
   createQuestionSet,

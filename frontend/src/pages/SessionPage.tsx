@@ -142,7 +142,7 @@ export default function SessionPage() {
         {!allAnswered && currentQuestion && (
           <div className="question-block">
             <div className="interview-stage">
-              <AvatarRenderer state={avatarState} />
+              <AvatarRenderer state={avatarState} audioRefs={[audioRef, interruptionAudioRef]} />
               {session.recordingConsent && (
                 <div className="self-preview">
                   <video ref={presentation.videoRef} autoPlay muted playsInline />

@@ -77,6 +77,19 @@ export interface Session {
   presentationSignals?: PresentationSignals;
 }
 
+/** The lightweight shape returned by the session-history list — no questions/responses, just enough to render a row and link to the full session. */
+export interface SessionListItem {
+  id: string;
+  createdAt: string;
+  role: string;
+  seniority: Seniority;
+  stressIntensity: StressIntensity;
+  status: SessionStatus;
+  scheduledDurationMinutes: number;
+  /** Present only once graded. */
+  overallScore?: number;
+}
+
 /** Cheap, on-device-computed signals — never raw video — submitted alongside sampled frames. */
 export interface PresentationSignals {
   frameCount: number;

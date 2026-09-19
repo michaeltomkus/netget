@@ -49,6 +49,22 @@ async function loadOwnedSession(req: Request, res: ExpressResponse): Promise<Ses
   return session;
 }
 
+const HISTORY_DEFAULT_LIMIT = 20;
+const HISTORY_MAX_LIMIT = 50;
+
+// Session history — newest first. Kept lightweight (no questions/responses,
+// just enough for a list row) since a Pro/Premium candidate can accumulate
+// an unbounded number of sessions over time.
+sessionsRouter.get("/", async (req, res) => {
+  const rawLimit = Number(req.query.limit ?? HISTORY_DEFAULT_LIMIT);
+  const rawOffset = Number(req.query.offset ?? 0);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(1, Math.trunc(rawLimit)), HISTORY_MAX_LIMIT) : HISTORY_DEFAULT_LIMIT;
+  const offset = Number.isFinite(rawOffset) ? Math.max(0, Math.trunc(rawOffset)) : 0;
+
+  const { sessions, total } = await store.listSessionsForUser(req.appUser!.id, { limit, offset });
+  res.json({ sessions, total, limit, offset });
+});
+
 sessionsRouter.post("/", async (req, res) => {
   const { role, seniority, companyContext, stressIntensity, scheduledDurationMinutes } =
     req.body ?? {};

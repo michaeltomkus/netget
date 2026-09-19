@@ -156,6 +156,92 @@ body {
   color: var(--muted);
 }
 
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin: 22px 0 28px;
+}
+
+.history-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+.history-stat-trend {
+  gap: 8px;
+  min-width: 0;
+}
+
+.history-stat-trend svg {
+  align-self: stretch;
+  min-width: 0;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 20px;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.history-row:hover {
+  background: var(--surface-2);
+}
+
+.history-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.history-row-role {
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+
+.history-row-meta {
+  font-size: 0.8rem;
+}
+
+.history-row-score {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: var(--accent-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 750;
+  font-size: 0.95rem;
+}
+
+.history-row-resume {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .sign-in-prompt {
   display: flex;
   flex-direction: column;
@@ -509,11 +595,31 @@ button.recording {
   display: block;
   border: 1px solid var(--border);
   transition: box-shadow 0.25s ease, transform 0.25s ease;
+  /* --avatar-level (0-1) is written directly to the DOM ~60x/sec by
+     AvatarRenderer from real audio amplitude, not via React state/props —
+     see its effect for why. Unset (no audioRefs, e.g. the landing page's
+     hero mock, or Web Audio unsupported) falls back to 0, so this is a
+     no-op there and the plain .avatar-speaking glow below still applies. */
+  transform: scale(calc(var(--avatar-base-scale, 1) + var(--avatar-level, 0) * 0.06));
+  filter: brightness(calc(1 + var(--avatar-level, 0) * 0.22));
 }
 
 .avatar-speaking img {
   box-shadow: var(--shadow-glow);
-  transform: scale(1.02);
+  /* The static per-state bump (no audioRefs, e.g. the landing page's hero
+     mock); real usage (SessionPage) layers --avatar-level on top of this
+     same scale() via the calc() above rather than a second transform. */
+  --avatar-base-scale: 1.02;
+}
+
+.avatar-pulse-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 22px;
+  border: 2px solid var(--accent-3);
+  opacity: var(--avatar-level, 0);
+  transform: scale(calc(1 + var(--avatar-level, 0) * 0.12));
+  pointer-events: none;
 }
 
 .avatar-indicator {

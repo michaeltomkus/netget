@@ -157,6 +157,23 @@ real Schedule page (which has its own billing UI to actually subscribe). A signe
 visitor at `/` sees the Schedule page directly, and a signed-out deep link to
 `/session/:id`, `/session/:id/report`, or `/admin` bounces to `/` rather than 404ing.
 
+**Session history** (`/history`, linked from the header): every mock interview a
+candidate has run, most recent first — role, seniority, date, status, and score once
+graded — paginated (`GET /api/sessions`, 20 per page) rather than loaded all at once,
+since a Pro/Premium candidate can accumulate an unbounded number of sessions over
+time. A stat row up top shows total sessions, average score, and (once there are at
+least two graded sessions) a small trend sparkline. Each row links to the report card
+if graded, or back into the session to resume it if still in progress.
+
+**Audio-reactive avatar**: `AvatarRenderer` now wires the actual question and
+live-interruption `<audio>` elements into a Web Audio `AnalyserNode` and pulses a ring
+around the avatar in real time with the genuine playback amplitude, instead of only
+the fixed CSS glow from a boolean speaking/idle state. Driven by direct DOM writes to
+a CSS custom property on every animation frame — not React state — so it doesn't
+force a full re-render of the session page (which is also streaming a live transcript)
+60 times a second. Degrades gracefully to the old static look wherever there's no real
+audio to analyze (the landing page's hero mock) or the browser lacks Web Audio.
+
 ## Setup
 
 ```bash
@@ -207,6 +224,9 @@ All must-have phases (1-5) plus Phase 6 (PWA polish) from
   alternative providers named in the architecture doc (Deepgram is already
   the default; Cloudflare R2 for storage, etc.) once there's real per-session
   cost data.
-- **V2 avatar upgrade (Phase 7)** — swap the static image in
-  `AvatarRenderer` for a generated talking-head video; the component's
-  `state` prop was designed for this swap from the start.
+- **Full talking-head video avatar** — `AvatarRenderer` is now audio-reactive
+  (see below) rather than fully static, but the interviewer is still a still
+  image, not generated video. That's a materially bigger lift (a paid
+  third-party video-generation provider, per-question generation latency/cost
+  on top of Claude/TTS/STT) deliberately not taken on without a provider
+  choice from the person running this.
