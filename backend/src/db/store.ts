@@ -16,6 +16,7 @@ import type {
   TimeManagement,
   ImprovementPlan,
   SessionListItem,
+  JobRole,
 } from "../types.js";
 
 // Prisma-backed store, replacing the flat-JSON-file version used through
@@ -183,9 +184,11 @@ function mapSession(row: {
   companyContext: string | null;
   stressIntensity: string;
   status: string;
+  jobRoleId: string | null;
   questionSetId: string | null;
   scheduledDurationMinutes: number;
   startedAt: Date | null;
+  scheduledFor: Date | null;
   endedAt: Date | null;
   recordingConsent: boolean;
   presentationFrameRefs: string[];
@@ -200,9 +203,11 @@ function mapSession(row: {
     companyContext: row.companyContext ?? undefined,
     stressIntensity: row.stressIntensity as Session["stressIntensity"],
     status: row.status as Session["status"],
+    jobRoleId: row.jobRoleId ?? undefined,
     questionSetId: row.questionSetId ?? undefined,
     scheduledDurationMinutes: row.scheduledDurationMinutes,
     startedAt: toIso(row.startedAt),
+    scheduledFor: toIso(row.scheduledFor),
     endedAt: toIso(row.endedAt),
     recordingConsent: row.recordingConsent,
     presentationFrameRefs: row.presentationFrameRefs.length ? row.presentationFrameRefs : undefined,
@@ -217,7 +222,21 @@ export async function createSession(params: {
   companyContext?: string;
   stressIntensity: Session["stressIntensity"];
   scheduledDurationMinutes: number;
+  jobRoleId?: string;
+  /** Set when the role's cached question set already exists — instant-start path. */
+  questionSetId?: string;
+  /**
+   * "in_progress" for an already-cached role (starts right now, startedAt
+   * set below); "scheduled" for a freshly-approved one waiting out its
+   * 5-minute buffer — see routes/sessions.ts. Defaults to "in_progress" for
+   * every caller outside the role-catalog flow (nothing else creates a
+   * session any other way).
+   */
+  status?: Session["status"];
+  /** Required (and only meaningful) alongside status: "scheduled". */
+  scheduledFor?: Date;
 }): Promise<Session> {
+  const status = params.status ?? "in_progress";
   const row = await prisma.session.create({
     data: {
       userId: params.userId,
@@ -225,9 +244,12 @@ export async function createSession(params: {
       seniority: params.seniority,
       companyContext: params.companyContext,
       stressIntensity: params.stressIntensity,
-      status: "in_progress",
+      status,
+      jobRoleId: params.jobRoleId,
+      questionSetId: params.questionSetId,
       scheduledDurationMinutes: params.scheduledDurationMinutes,
-      startedAt: new Date(),
+      startedAt: status === "in_progress" ? new Date() : null,
+      scheduledFor: params.scheduledFor,
       recordingConsent: false,
     },
   });
@@ -253,6 +275,7 @@ export async function updateSession(
   data: Partial<{
     status: Session["status"];
     questionSetId: string;
+    startedAt: string;
     endedAt: string;
     recordingConsent: boolean;
     presentationFrameRefs: string[] | null;
@@ -264,6 +287,7 @@ export async function updateSession(
     data: {
       status: data.status,
       questionSetId: data.questionSetId,
+      startedAt: data.startedAt ? new Date(data.startedAt) : undefined,
       endedAt: data.endedAt ? new Date(data.endedAt) : undefined,
       recordingConsent: data.recordingConsent,
       presentationFrameRefs:
@@ -335,9 +359,9 @@ export async function countSessionsSinceAllUsers(since: Date): Promise<number> {
 
 // ---- Question sets & questions ----
 
-export async function createQuestionSet(sessionId: string): Promise<QuestionSet> {
-  const row = await prisma.questionSet.create({ data: { sessionId } });
-  return { id: row.id, sessionId: row.sessionId };
+export async function createQuestionSet(jobRoleId: string): Promise<QuestionSet> {
+  const row = await prisma.questionSet.create({ data: { jobRoleId } });
+  return { id: row.id, jobRoleId: row.jobRoleId ?? undefined };
 }
 
 function mapQuestion(row: {
@@ -501,15 +525,30 @@ export async function getFullUserExport(userId: string) {
     prisma.session.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
-      include: {
-        questionSet: { include: { questions: true } },
-        responses: true,
-        gradingResult: true,
-      },
+      include: { responses: true, gradingResult: true },
     }),
     prisma.subscription.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
   ]);
-  return { user, sessions, subscriptions };
+
+  // QuestionSet is no longer a per-session relation (it's a role-catalog's
+  // shared, cached set — see JobRole.questionSetId), so it can't come along
+  // via `include` above; fetch the distinct sets this user's sessions
+  // actually used and fold each session's questions in by hand instead.
+  const questionSetIds = [...new Set(sessions.map((s) => s.questionSetId).filter((id): id is string => Boolean(id)))];
+  const questionSets = questionSetIds.length
+    ? await prisma.questionSet.findMany({
+        where: { id: { in: questionSetIds } },
+        include: { questions: true },
+      })
+    : [];
+  const questionsBySetId = new Map(questionSets.map((qs) => [qs.id, qs.questions]));
+
+  const sessionsWithQuestions = sessions.map((session) => ({
+    ...session,
+    questions: session.questionSetId ? (questionsBySetId.get(session.questionSetId) ?? []) : [],
+  }));
+
+  return { user, sessions: sessionsWithQuestions, subscriptions };
 }
 
 // Deletes every row this user owns, in FK-safe order, inside one
@@ -523,23 +562,101 @@ export async function getFullUserExport(userId: string) {
 export async function deleteUserAndAllData(userId: string): Promise<{ presentationFrameRefs: string[] }> {
   const sessions = await prisma.session.findMany({
     where: { userId },
-    select: { id: true, questionSetId: true, presentationFrameRefs: true },
+    select: { id: true, presentationFrameRefs: true },
   });
   const sessionIds = sessions.map((s) => s.id);
-  const questionSetIds = sessions.map((s) => s.questionSetId).filter((id): id is string => Boolean(id));
   const presentationFrameRefs = sessions.flatMap((s) => s.presentationFrameRefs);
 
+  // Deliberately does NOT touch QuestionSet/Question: those are now a
+  // role-catalog's shared, cached rows (see JobRole.questionSetId), not
+  // this user's own data — other candidates' sessions for the same role
+  // reference the same set, so deleting one account must never delete them.
   await prisma.$transaction([
     prisma.response.deleteMany({ where: { sessionId: { in: sessionIds } } }),
     prisma.gradingResult.deleteMany({ where: { sessionId: { in: sessionIds } } }),
-    prisma.question.deleteMany({ where: { questionSetId: { in: questionSetIds } } }),
-    prisma.questionSet.deleteMany({ where: { sessionId: { in: sessionIds } } }),
     prisma.session.deleteMany({ where: { id: { in: sessionIds } } }),
     prisma.subscription.deleteMany({ where: { userId } }),
     prisma.user.delete({ where: { id: userId } }),
   ]);
 
   return { presentationFrameRefs };
+}
+
+// ---- Job role catalog ----
+
+function mapJobRole(row: {
+  id: string;
+  title: string;
+  normalizedKey: string;
+  seniority: string;
+  status: string;
+  saturationScore: number;
+  saturationRationale: string;
+  createdAt: Date;
+  questionSetId: string | null;
+  usageCount: number;
+}): JobRole {
+  return {
+    id: row.id,
+    title: row.title,
+    normalizedKey: row.normalizedKey,
+    seniority: row.seniority as JobRole["seniority"],
+    status: row.status as JobRole["status"],
+    saturationScore: row.saturationScore,
+    saturationRationale: row.saturationRationale,
+    createdAt: row.createdAt.toISOString(),
+    questionSetId: row.questionSetId ?? undefined,
+    usageCount: row.usageCount,
+  };
+}
+
+export async function getJobRoleByKey(normalizedKey: string, seniority: JobRole["seniority"]): Promise<JobRole | undefined> {
+  const row = await prisma.jobRole.findUnique({ where: { normalizedKey_seniority: { normalizedKey, seniority } } });
+  return row ? mapJobRole(row) : undefined;
+}
+
+export async function getJobRoleById(id: string): Promise<JobRole | undefined> {
+  const row = await prisma.jobRole.findUnique({ where: { id } });
+  return row ? mapJobRole(row) : undefined;
+}
+
+/** Autocomplete search — approved roles only, matched case-insensitively against the title. */
+export async function searchApprovedJobRoles(
+  query: string,
+  seniority: JobRole["seniority"],
+  limit = 8,
+): Promise<JobRole[]> {
+  const rows = await prisma.jobRole.findMany({
+    where: {
+      status: "approved",
+      seniority,
+      title: { contains: query, mode: "insensitive" },
+    },
+    orderBy: [{ usageCount: "desc" }, { title: "asc" }],
+    take: limit,
+  });
+  return rows.map(mapJobRole);
+}
+
+export async function createJobRole(params: {
+  title: string;
+  normalizedKey: string;
+  seniority: JobRole["seniority"];
+  status: JobRole["status"];
+  saturationScore: number;
+  saturationRationale: string;
+}): Promise<JobRole> {
+  const row = await prisma.jobRole.create({ data: params });
+  return mapJobRole(row);
+}
+
+/** Attaches a freshly-generated cached set to its role once background generation finishes — see routes/sessions.ts. */
+export async function attachJobRoleQuestionSet(jobRoleId: string, questionSetId: string): Promise<void> {
+  await prisma.jobRole.update({ where: { id: jobRoleId }, data: { questionSetId } });
+}
+
+export async function incrementJobRoleUsage(jobRoleId: string): Promise<void> {
+  await prisma.jobRole.update({ where: { id: jobRoleId }, data: { usageCount: { increment: 1 } } });
 }
 
 // Kept as a namespace object too, for call sites that prefer `store.method()`
@@ -573,4 +690,10 @@ export const store = {
   getGradingResultBySession,
   getFullUserExport,
   deleteUserAndAllData,
+  getJobRoleByKey,
+  getJobRoleById,
+  searchApprovedJobRoles,
+  createJobRole,
+  attachJobRoleQuestionSet,
+  incrementJobRoleUsage,
 };

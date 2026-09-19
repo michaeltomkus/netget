@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
 import { sessionsRouter } from "./routes/sessions.js";
+import { jobRolesRouter } from "./routes/jobRoles.js";
 import { billingRouter } from "./routes/billing.js";
 import { stripeWebhookRouter } from "./routes/stripeWebhook.js";
 import { adminRouter } from "./routes/admin.js";
@@ -57,6 +58,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/sessions", sessionsRouter);
+app.use("/api/job-roles", jobRolesRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/me", meRouter);

@@ -15,10 +15,32 @@ export interface Session {
   companyContext?: string;
   stressIntensity: StressIntensity;
   status: string;
-  questionSetId: string;
+  jobRoleId?: string;
+  questionSetId?: string;
   recordingConsent: boolean;
   scheduledDurationMinutes: number;
+  startedAt?: string;
+  /** Earliest moment a "scheduled" (buffered, freshly-approved-role) session may begin. */
+  scheduledFor?: string;
 }
+
+export type JobRoleStatus = "approved" | "rejected";
+
+/** A role-catalog entry — see backend/src/types.ts for the full lifecycle. */
+export interface JobRole {
+  id: string;
+  title: string;
+  seniority: Seniority;
+  status: JobRoleStatus;
+  saturationScore: number;
+  saturationRationale: string;
+  usageCount: number;
+  /** Present once this role's cached question set exists — absent means "approved, generation still in flight." */
+  questionSetId?: string;
+}
+
+/** How POST /api/sessions wants the caller to proceed. */
+export type SchedulingInfo = { status: "ready" } | { status: "buffered"; scheduledFor: string };
 
 export interface SessionListItem {
   id: string;

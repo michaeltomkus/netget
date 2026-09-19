@@ -46,3 +46,16 @@ export const gradeSessionLimiter = rateLimit({
   keyGenerator: userOrIpKey,
   message: { error: "Too many grading requests — please wait a few minutes and try again." },
 });
+
+// Each hit spends a Claude call (see services/jobRoleClassifier.ts) and, on
+// approval, kicks off a full question-generation call too — tighter than
+// session creation since a scripted loop here is pure cost with no
+// free-tier gate in front of it at all.
+export const jobRoleRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+  message: { error: "Too many role requests — please wait a few minutes and try again." },
+});

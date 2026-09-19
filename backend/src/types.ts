@@ -58,11 +58,16 @@ export interface Session {
   companyContext?: string;
   stressIntensity: StressIntensity;
   status: SessionStatus;
-  /** Set once question generation completes; absent only in the brief window during session creation. */
+  /** The catalog entry this was scheduled against — see JobRole. Absent for sessions predating the role catalog. */
+  jobRoleId?: string;
+  /** Set once a question set is attached — either immediately (an already-cached role) or once background generation finishes for a freshly-approved one. */
   questionSetId?: string;
   /** Candidate-chosen target length for the whole session, set at schedule time. */
   scheduledDurationMinutes: number;
+  /** Null until the candidate is actually answering — see scheduledFor. */
   startedAt?: string;
+  /** Earliest moment a "scheduled" (buffered, freshly-approved-role) session may begin; absent for the instant-start path. */
+  scheduledFor?: string;
   endedAt?: string;
   /** Explicit opt-in, captured at schedule time, before any camera access is requested. */
   recordingConsent: boolean;
@@ -88,6 +93,29 @@ export interface SessionListItem {
   scheduledDurationMinutes: number;
   /** Present only once graded. */
   overallScore?: number;
+}
+
+export type JobRoleStatus = "approved" | "rejected";
+
+/**
+ * A role-catalog entry — see docs comment above the Prisma model for the
+ * full lifecycle. Powers scheduling autocomplete (GET /api/job-roles) and
+ * is created via the request flow (POST /api/job-roles/request), which
+ * normalizes free-typed text and scores it via services/jobRoleClassifier.ts.
+ */
+export interface JobRole {
+  id: string;
+  title: string;
+  normalizedKey: string;
+  seniority: Seniority;
+  status: JobRoleStatus;
+  /** 0-100 — see the Prisma model comment: a Claude judgment call, not real labor-market data. */
+  saturationScore: number;
+  saturationRationale: string;
+  createdAt: string;
+  /** Present once this role's cached question set exists — absent means "approved, generation still in flight." */
+  questionSetId?: string;
+  usageCount: number;
 }
 
 /** Cheap, on-device-computed signals — never raw video — submitted alongside sampled frames. */
@@ -116,7 +144,8 @@ export interface Question {
 
 export interface QuestionSet {
   id: string;
-  sessionId: string;
+  /** The JobRole this cached set belongs to — absent only for legacy sets created before role caching existed. */
+  jobRoleId?: string;
 }
 
 export interface DynamicFollowUp {
@@ -214,4 +243,12 @@ export interface GeneratedQuestion {
 
 export interface GeneratedQuestionSet {
   questions: GeneratedQuestion[];
+}
+
+/** Claude's response to services/jobRoleClassifier.ts's classify() call. */
+export interface RoleClassification {
+  normalizedTitle: string;
+  /** 0-100 — see JobRole.saturationScore. */
+  saturationScore: number;
+  rationale: string;
 }

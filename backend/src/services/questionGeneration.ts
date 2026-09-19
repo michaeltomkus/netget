@@ -69,19 +69,27 @@ For every question, write idealAnswerCriteria: a concise rubric of what a strong
 Calibrate difficulty and expectations to the stated seniority level. Use the emit_question_set tool to return your result — no other output.`;
 }
 
-export async function generateQuestionSet(params: {
-  sessionId: string;
+// A fixed baseline used only for generating the base question set below —
+// not the same thing as a candidate's own stressIntensity choice at
+// schedule time, which still separately controls how aggressively the live
+// Interview Conductor pushes back during a session (see gateway/sttGateway.ts).
+// Since one role's question set is now generated once and reused by every
+// candidate who schedules that role (see JobRole.questionSetId), it can no
+// longer be tailored to any one session's stressIntensity or companyContext
+// — this generates a generic, moderately-pressured set that works as a
+// reasonable baseline for anyone practicing that role.
+const CACHED_SET_STRESS_BASELINE: StressIntensity = "medium";
+
+export async function generateRoleQuestionSet(params: {
+  jobRoleId: string;
   role: string;
   seniority: Seniority;
-  companyContext?: string;
-  stressIntensity: StressIntensity;
 }): Promise<QuestionSet> {
   const client = getAnthropicClient();
 
   const userPrompt = `Role: ${params.role}
 Seniority: ${params.seniority}
-Company/industry context: ${params.companyContext ?? "none given"}
-Stress intensity for this session: ${params.stressIntensity} (higher intensity should mean sharper, more pointed stress questions and follow-up triggers)`;
+Stress intensity for this question set: ${CACHED_SET_STRESS_BASELINE} (this set will be reused across many candidates, so keep it a generic, broadly-applicable baseline rather than tailored to one session)`;
 
   const message = await client.messages.create({
     model: MODELS.bulk,
@@ -105,7 +113,7 @@ Stress intensity for this session: ${params.stressIntensity} (higher intensity s
   const generated = toolUse.input as GeneratedQuestionSet;
 
   // QuestionSet row must exist before Questions, which carry a FK to it.
-  const questionSet = await store.createQuestionSet(params.sessionId);
+  const questionSet = await store.createQuestionSet(params.jobRoleId);
 
   const questions: Question[] = generated.questions.map((q, index) => ({
     id: uuidv4(),

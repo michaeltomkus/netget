@@ -6,9 +6,11 @@ import type {
   CandidateQuestion,
   DynamicFollowUp,
   GradingResult,
+  JobRole,
   Plan,
   PresentationSignals,
   ResponseRecord,
+  SchedulingInfo,
   Seniority,
   Session,
   SessionListItem,
@@ -48,16 +50,37 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function createSession(params: {
-  role: string;
-  seniority: Seniority;
+  jobRoleId: string;
   companyContext?: string;
   stressIntensity: StressIntensity;
   recordingConsent: boolean;
   scheduledDurationMinutes: number;
 }) {
-  return request<{ session: Session; questions: CandidateQuestion[] }>("/api/sessions", {
+  return request<{ session: Session; questions: CandidateQuestion[]; scheduling: SchedulingInfo }>(
+    "/api/sessions",
+    { method: "POST", body: JSON.stringify(params) },
+  );
+}
+
+/** Transitions a "scheduled" (buffered) session into "in_progress" — see SessionPage's waiting room. */
+export function beginSession(sessionId: string) {
+  return request<{ session: Session; questions: CandidateQuestion[] }>(`/api/sessions/${sessionId}/begin`, {
     method: "POST",
-    body: JSON.stringify(params),
+  });
+}
+
+/** Autocomplete search — approved roles only, for the given seniority. An empty query returns that seniority's most-used roles. */
+export function searchJobRoles(query: string, seniority: Seniority) {
+  const params = new URLSearchParams({ seniority });
+  if (query) params.set("q", query);
+  return request<{ roles: JobRole[] }>(`/api/job-roles?${params.toString()}`);
+}
+
+/** Requests a role that didn't turn up in autocomplete — normalizes + scores it, approving or rejecting it. */
+export function requestJobRole(title: string, seniority: Seniority) {
+  return request<{ jobRole: JobRole }>("/api/job-roles/request", {
+    method: "POST",
+    body: JSON.stringify({ title, seniority }),
   });
 }
 

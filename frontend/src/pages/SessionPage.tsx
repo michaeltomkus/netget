@@ -6,6 +6,7 @@ import { useLiveNudges } from "../hooks/useLiveNudges";
 import { usePresentationCapture } from "../hooks/usePresentationCapture";
 import AvatarRenderer, { AvatarState } from "../components/AvatarRenderer";
 import LiveNudgeOverlay from "../components/LiveNudgeOverlay";
+import ScheduledWaitRoom from "../components/ScheduledWaitRoom";
 import type { CandidateQuestion, Session } from "../api/types";
 
 const TYPE_LABEL: Record<CandidateQuestion["type"], string> = {
@@ -85,6 +86,21 @@ export default function SessionPage() {
   if (loading) return <div className="card">Loading session…</div>;
   if (error) return <div className="card error">{error}</div>;
   if (!session) return <div className="card error">Session not found.</div>;
+
+  // A freshly-approved role's first-ever booking — waiting out its
+  // 5-minute buffer while the question set generates in the background.
+  // See routes/sessions.ts and ScheduledWaitRoom.
+  if (session.status === "scheduled") {
+    return (
+      <ScheduledWaitRoom
+        session={session}
+        onReady={(startedSession, startedQuestions) => {
+          setSession(startedSession);
+          setQuestions(startedQuestions);
+        }}
+      />
+    );
+  }
 
   const allAnswered = currentIndex >= questions.length;
   const recordedAnswer = stt.finalText.trim();

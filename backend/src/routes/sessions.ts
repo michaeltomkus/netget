@@ -4,7 +4,7 @@ import * as store from "../db/store.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createSessionLimiter, gradeSessionLimiter } from "../middleware/rateLimit.js";
 import { checkFreeTierLimit } from "./billing.js";
-import { generateQuestionSet } from "../services/questionGeneration.js";
+import { ensureRoleQuestionSetGenerated } from "./jobRoles.js";
 import { runGradingPipeline } from "../services/grading/gradingPipeline.js";
 import { savePresentationFrames } from "../services/media.js";
 import { captureException } from "../services/sentry.js";
@@ -14,7 +14,6 @@ import type {
   Question,
   Response,
   Session,
-  Seniority,
   StressIntensity,
 } from "../types.js";
 
@@ -24,7 +23,6 @@ export const sessionsRouter = Router();
 // mock-interview session is personal data tied to one candidate.
 sessionsRouter.use(requireAuth());
 
-const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "staff", "exec"];
 const STRESS_LEVELS: StressIntensity[] = ["low", "medium", "high"];
 
 // Never send idealAnswerCriteria / followUpTriggers to the candidate before
@@ -67,15 +65,17 @@ sessionsRouter.get("/", async (req, res) => {
   res.json({ sessions, total, limit, offset });
 });
 
-sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
-  const { role, seniority, companyContext, stressIntensity, scheduledDurationMinutes } =
-    req.body ?? {};
+// How long a freshly-approved role's first session waits before it can
+// begin — long enough for background question generation (routes/jobRoles.ts
+// ensureRoleQuestionSetGenerated) to comfortably finish, which in practice
+// takes seconds, not minutes.
+const SCHEDULING_BUFFER_MINUTES = 5;
 
-  if (typeof role !== "string" || role.trim().length === 0) {
-    return res.status(400).json({ error: "role is required" });
-  }
-  if (!SENIORITIES.includes(seniority)) {
-    return res.status(400).json({ error: `seniority must be one of ${SENIORITIES.join(", ")}` });
+sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
+  const { jobRoleId, companyContext, stressIntensity, scheduledDurationMinutes } = req.body ?? {};
+
+  if (typeof jobRoleId !== "string" || jobRoleId.trim().length === 0) {
+    return res.status(400).json({ error: "jobRoleId is required" });
   }
   if (!STRESS_LEVELS.includes(stressIntensity)) {
     return res
@@ -91,6 +91,11 @@ sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
     return res.status(400).json({ error: "scheduledDurationMinutes must be a number between 5 and 180" });
   }
 
+  const jobRole = await store.getJobRoleById(jobRoleId);
+  if (!jobRole || jobRole.status !== "approved") {
+    return res.status(400).json({ error: "Unknown or unapproved jobRoleId — request it first via POST /api/job-roles/request" });
+  }
+
   const limit = await checkFreeTierLimit(req.appUser!.id);
   if (!limit.allowed) {
     const message =
@@ -100,43 +105,90 @@ sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
     return res.status(402).json({ error: message, usage: limit });
   }
 
-  const trimmedRole = role.trim();
   const trimmedCompanyContext = typeof companyContext === "string" ? companyContext.trim() : undefined;
+  await store.incrementJobRoleUsage(jobRole.id);
 
-  // The Session row is created first (status: in_progress) so the
-  // QuestionSet row generated below has something to carry its FK to;
-  // cleaned up on failure so a bad Claude call never leaves an orphaned,
-  // permanently-stuck-without-questions session behind.
+  // Already has a cached question set (an established role, or one
+  // approved by an earlier request that already finished generating) —
+  // schedulable immediately, same as every session before this feature existed.
+  if (jobRole.questionSetId) {
+    const session = await store.createSession({
+      userId: req.appUser!.id,
+      role: jobRole.title,
+      seniority: jobRole.seniority,
+      companyContext: trimmedCompanyContext,
+      stressIntensity,
+      scheduledDurationMinutes,
+      jobRoleId: jobRole.id,
+      questionSetId: jobRole.questionSetId,
+      status: "in_progress",
+    });
+    const questions = await store.getQuestionsBySet(jobRole.questionSetId);
+    return res.status(201).json({
+      session,
+      questions: questions.map(toCandidateFacingQuestion),
+      scheduling: { status: "ready" },
+    });
+  }
+
+  // Freshly-approved role, no cached set yet — schedule for 5 minutes out
+  // and generate its question set in the background (not awaited here); the
+  // candidate calls POST /:id/begin once scheduledFor has passed.
+  const scheduledFor = new Date(Date.now() + SCHEDULING_BUFFER_MINUTES * 60 * 1000);
   const session = await store.createSession({
     userId: req.appUser!.id,
-    role: trimmedRole,
-    seniority,
+    role: jobRole.title,
+    seniority: jobRole.seniority,
     companyContext: trimmedCompanyContext,
     stressIntensity,
     scheduledDurationMinutes,
+    jobRoleId: jobRole.id,
+    status: "scheduled",
+    scheduledFor,
   });
 
-  try {
-    const questionSet = await generateQuestionSet({
-      sessionId: session.id,
-      role: trimmedRole,
-      seniority,
-      companyContext: trimmedCompanyContext,
-      stressIntensity,
-    });
-    const updated = await store.updateSession(session.id, { questionSetId: questionSet.id });
-    const questions = await store.getQuestionsBySet(questionSet.id);
+  void ensureRoleQuestionSetGenerated(jobRole.id, jobRole.title, jobRole.seniority);
 
-    res.status(201).json({
-      session: updated,
-      questions: questions.map(toCandidateFacingQuestion),
-    });
-  } catch (err) {
-    console.error("Failed to create session:", err);
-    captureException(err, { route: "POST /api/sessions", userId: req.appUser!.id });
-    await store.deleteSession(session.id);
-    res.status(502).json({ error: "Failed to generate question set", detail: String(err) });
+  res.status(201).json({
+    session,
+    questions: [],
+    scheduling: { status: "buffered", scheduledFor: scheduledFor.toISOString() },
+  });
+});
+
+// Transitions a "scheduled" (buffered) session into "in_progress" once both
+// its wait is over and its role's cached question set is ready. Separate
+// from creation because the wait is the whole point of the buffer — the
+// session isn't retroactively started early just because generation (which
+// in practice takes seconds) happened to finish before the 5 minutes did.
+sessionsRouter.post("/:id/begin", async (req, res) => {
+  const session = await loadOwnedSession(req, res);
+  if (!session) return;
+
+  if (session.status !== "scheduled") {
+    return res.status(409).json({ error: "Session is not waiting to begin" });
   }
+  if (!session.scheduledFor || new Date(session.scheduledFor).getTime() > Date.now()) {
+    return res.status(425).json({ error: "Too early — this session isn't scheduled to start yet" });
+  }
+
+  let questionSetId = session.questionSetId;
+  if (!questionSetId && session.jobRoleId) {
+    const jobRole = await store.getJobRoleById(session.jobRoleId);
+    questionSetId = jobRole?.questionSetId;
+  }
+  if (!questionSetId) {
+    return res.status(425).json({ error: "Still preparing your questions — try again in a moment" });
+  }
+
+  const updated = await store.updateSession(session.id, {
+    status: "in_progress",
+    questionSetId,
+    startedAt: new Date().toISOString(),
+  });
+  const questions = await store.getQuestionsBySet(questionSetId);
+
+  res.json({ session: updated, questions: questions.map(toCandidateFacingQuestion) });
 });
 
 sessionsRouter.get("/:id", async (req, res) => {

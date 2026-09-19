@@ -110,13 +110,28 @@ model Session {
   companyContext           String?
   stressIntensity          StressIntensity
   status                   SessionStatus
-  /// Denormalized convenience copy of questionSet.id, set once question
-  /// generation completes (the QuestionSet row's own FK to Session is the
-  /// real relation; this just avoids an extra query/include at every call
-  /// site that only wants the id).
+  /// The catalog entry this session was scheduled against — see JobRole.
+  /// Optional: legacy sessions created before the role catalog existed have
+  /// none. Plain scalar, not a Prisma relation (same denormalized-for-query
+  /// posture as questionSetId below) — a JobRole is never deleted once
+  /// created, so there's no dangling-reference risk to guard against.
+  jobRoleId                String?
+  /// Denormalized convenience copy of the question set's id — a JobRole's
+  /// cached set (see QuestionSet.jobRoleId) once one exists, so every
+  /// session for that role points at the same rows. Set immediately for an
+  /// already-cached role, or once background generation finishes for a
+  /// freshly-approved one (see routes/sessions.ts).
   questionSetId            String?
   scheduledDurationMinutes Int
+  /// Null until the candidate is actually answering — for a freshly-approved
+  /// role this stays null through the whole 5-minute buffer; set by
+  /// POST /:id/begin once scheduledFor has passed and questionSetId is
+  /// ready. Time-management grading measures from here, not from creation.
   startedAt                DateTime?
+  /// Earliest moment a "scheduled" (buffered) session may begin — null for
+  /// the instant-start path (an already-cached role), set to
+  /// createdAt + 5min for a freshly-approved one.
+  scheduledFor             DateTime?
   endedAt                  DateTime?
   recordingConsent         Boolean         @default(false)
   /// Server-local disk paths to sampled presentation frames — present only
@@ -124,17 +139,58 @@ model Session {
   presentationFrameRefs    String[]        @default([])
   presentationSignals      Json?
 
-  questionSet              QuestionSet?
   responses                Response[]
   gradingResult            GradingResult?
 
   @@index([userId])
 }
 
+enum JobRoleStatus {
+  approved
+  rejected
+}
+
+/// The job-role catalog behind scheduling autocomplete. A row is created the
+/// moment someone requests a role that doesn't already have one for that
+/// seniority — see services/jobRoleClassifier.ts + routes/jobRoles.ts —
+/// never edited afterward except to attach its cached questionSet and bump
+/// usageCount. Rejected rows are kept (not deleted) so the same unpopular
+/// title+seniority doesn't re-spend a Claude call every time it's retried.
+model JobRole {
+  id                  String        @id @default(uuid())
+  /// Claude's normalized, display-ready form ("Backend Engineer") — never
+  /// the candidate's raw typed text.
+  title               String
+  /// Lowercase/whitespace-collapsed title — the actual (title, seniority)
+  /// matching key; see @@unique below.
+  normalizedKey       String
+  seniority           Seniority
+  status              JobRoleStatus
+  /// 0-100 — Claude's own-knowledge estimate of how common/interview-relevant
+  /// this role+seniority is. A heuristic judgment call, not real
+  /// labor-market data (no such provider is integrated in this app) — see
+  /// services/jobRoleClassifier.ts for the exact prompt and threshold.
+  saturationScore     Int
+  saturationRationale String
+  createdAt           DateTime      @default(now())
+  /// Set once background generation finishes after the first approval —
+  /// absent means "approved, but still inside its first 5-minute buffer."
+  questionSetId       String?
+  /// How many sessions have been scheduled against this role since — a
+  /// rough proxy for "how established is this entry," surfaced nowhere yet
+  /// but useful once there's a reason to prune or feature roles.
+  usageCount          Int           @default(0)
+
+  @@unique([normalizedKey, seniority])
+  @@index([seniority, status])
+}
+
 model QuestionSet {
   id        String     @id @default(uuid())
-  sessionId String     @unique
-  session   Session    @relation(fields: [sessionId], references: [id])
+  /// A role-catalog's cached, reused set — see JobRole.questionSetId, which
+  /// mirrors this id back (same denormalized-copy pattern as
+  /// Session.questionSetId, kept in sync in the same transaction).
+  jobRoleId String?    @unique
   questions Question[]
 }
 

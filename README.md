@@ -174,6 +174,38 @@ force a full re-render of the session page (which is also streaming a live trans
 60 times a second. Degrades gracefully to the old static look wherever there's no real
 audio to analyze (the landing page's hero mock) or the browser lacks Web Audio.
 
+**Role catalog & AI-approved scheduling**: the "target role" field on the Schedule page is
+now an autocomplete against a growing catalog (`JobRole`, `GET /api/job-roles`) instead of a
+free-text box that spawned a bespoke question set every single time.
+
+- **Existing role → instant, as before.** Pick a suggestion and the session starts right
+  away, reusing that role's cached question set — no Claude call at all on the scheduling
+  path anymore for an established role.
+- **New role → normalize, score, and gate it first** (`POST /api/job-roles/request`,
+  `services/jobRoleClassifier.ts`). One Claude Haiku call standardizes the typed text into a
+  canonical title and estimates a 0-100 "how common/interview-relevant is this" score —
+  **a judgment call from Claude's own knowledge, not real labor-market data**; no such
+  provider (BLS, Lightcast, a postings API, etc.) is integrated in this app, and the UI is
+  worded accordingly. Score below the threshold (60) and the request is rejected outright
+  with the rationale shown to the candidate — no retry limit, no admin queue.
+- **Approved-but-new → schedule 5 minutes out.** The first-ever booking of a freshly
+  approved role can't start instantly (nothing's been generated for it yet): scheduling it
+  sets `scheduledFor = now + 5min` and kicks off question generation in the background
+  (fire-and-forget, in-process — no job queue in this app, so a mid-window server restart
+  would require the next person to retrigger it). `SessionPage` shows a countdown
+  (`ScheduledWaitRoom`) and polls `POST /:id/begin`, which 425s until both the clock and
+  generation are ready — in practice generation finishes in seconds, so the wait is really
+  just the 5 minutes.
+- **Retained for reuse, by design.** Once generated, a role's question set (`QuestionSet`,
+  now keyed to `JobRole` instead of to one `Session`) is cached and served to every future
+  candidate who schedules that role+seniority — this is a deliberate tradeoff: it's what
+  makes "instant" possible for an established role, at the cost of every candidate doing the
+  same role+seniority seeing the same base questions rather than a bespoke set per session.
+  A session's own `stressIntensity` choice still shapes the *live* Interview Conductor's
+  follow-up aggressiveness during the session — that's independent of which static base
+  questions were pre-generated. `companyContext` is still collected and shown for context, but
+  no longer feeds question generation for a cached role, since the set is shared.
+
 **Accounts & billing hardening**: closes several gaps from the initial billing pass.
 
 - **Sign-in → checkout linking**: clicking "Start Pro/Premium" on the landing page
