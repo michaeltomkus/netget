@@ -15,7 +15,6 @@ const getExperimentExposureCounts = vi.fn<(key: string) => Promise<Record<string
 const getExperimentConversionCounts = vi.fn<(key: string) => Promise<{ variant: string; goal: string; count: number }[]>>();
 const listCommunicationTemplates = vi.fn();
 const listCommunicationSends = vi.fn();
-const getCommunicationVariantCounts = vi.fn();
 const getBrandOverride = vi.fn<() => Promise<string | null>>();
 const setBrandOverride = vi.fn<(variantKey: string | null, updatedByUserId: string) => Promise<void>>();
 
@@ -28,7 +27,6 @@ vi.mock("../db/store.js", () => ({
   getExperimentConversionCounts: (...args: [string]) => getExperimentConversionCounts(...args),
   listCommunicationTemplates: (...args: []) => listCommunicationTemplates(...args),
   listCommunicationSends: (...args: [number?]) => listCommunicationSends(...args),
-  getCommunicationVariantCounts: (...args: [string, string]) => getCommunicationVariantCounts(...args),
   getBrandOverride: (...args: []) => getBrandOverride(...args),
   setBrandOverride: (...args: [string | null, string]) => setBrandOverride(...args),
 }));
@@ -69,7 +67,6 @@ beforeEach(() => {
   getExperimentConversionCounts.mockReset();
   listCommunicationTemplates.mockReset();
   listCommunicationSends.mockReset();
-  getCommunicationVariantCounts.mockReset();
   getBrandOverride.mockReset();
   setBrandOverride.mockReset();
   seedCommunicationTemplates.mockReset();
@@ -132,6 +129,13 @@ describe("GET /api/admin/communications/templates", () => {
     expect(res.body.templates).toHaveLength(1);
     expect(res.body.channelStatus).toEqual({ email: true, sms: false, push: false });
   });
+
+  it("502s when the store call fails, instead of crashing", async () => {
+    listCommunicationTemplates.mockRejectedValue(new Error("Can't reach database server"));
+    const app = buildApp();
+    const res = await request(app).get("/api/admin/communications/templates");
+    expect(res.status).toBe(502);
+  });
 });
 
 describe("POST /api/admin/communications/templates/seed", () => {
@@ -141,6 +145,13 @@ describe("POST /api/admin/communications/templates/seed", () => {
     const res = await request(app).post("/api/admin/communications/templates/seed");
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ seeded: 150 });
+  });
+
+  it("502s when seeding fails, instead of crashing", async () => {
+    seedCommunicationTemplates.mockRejectedValue(new Error("Can't reach database server"));
+    const app = buildApp();
+    const res = await request(app).post("/api/admin/communications/templates/seed");
+    expect(res.status).toBe(502);
   });
 });
 
@@ -153,23 +164,12 @@ describe("GET /api/admin/communications/history", () => {
     expect(res.body.sends).toEqual([{ id: "s1" }]);
     expect(listCommunicationSends).toHaveBeenCalledWith(100);
   });
-});
 
-describe("GET /api/admin/communications/variant-counts", () => {
-  it("400s when typeName or channel is missing/invalid", async () => {
+  it("502s when the store call fails, instead of crashing", async () => {
+    listCommunicationSends.mockRejectedValue(new Error("Can't reach database server"));
     const app = buildApp();
-    const res = await request(app).get("/api/admin/communications/variant-counts?typeName=Welcome");
-    expect(res.status).toBe(400);
-  });
-
-  it("returns counts for a valid query", async () => {
-    getCommunicationVariantCounts.mockResolvedValue([{ variant: "A", status: "sent", count: 5 }]);
-    const app = buildApp();
-    const res = await request(app).get(
-      "/api/admin/communications/variant-counts?typeName=Welcome&channel=email",
-    );
-    expect(res.status).toBe(200);
-    expect(res.body.counts).toEqual([{ variant: "A", status: "sent", count: 5 }]);
+    const res = await request(app).get("/api/admin/communications/history");
+    expect(res.status).toBe(502);
   });
 });
 

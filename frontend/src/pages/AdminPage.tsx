@@ -34,6 +34,32 @@ function formatRate(conversions: number, exposures: number): string {
   return `${((conversions / exposures) * 100).toFixed(1)}%`;
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** Shared by BrandIdentitySection and CommunicationsSection's variant previews — same card shape (title, optional subject line, body, optional footer note). */
+function VariantPreviewCard({
+  title,
+  subject,
+  body,
+  footer,
+}: {
+  title: string;
+  subject?: string;
+  body: string;
+  footer?: string;
+}) {
+  return (
+    <div className="comms-variant-card">
+      <h3>{title}</h3>
+      {subject && <p className="comms-variant-subject">{subject}</p>}
+      <p className="comms-variant-body">{body}</p>
+      {footer && <p className="comms-variant-vars muted">{footer}</p>}
+    </div>
+  );
+}
+
 /**
  * Force which brand.config.json variant everyone sees, or hand the
  * decision back to the "brand-identity" experiment's per-visitor split.
@@ -56,7 +82,7 @@ function BrandIdentitySection() {
         setConfig(c);
         setSelected(c.overrideVariant ?? "");
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }
 
   useEffect(load, []);
@@ -70,7 +96,7 @@ function BrandIdentitySection() {
       setSaved(true);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -89,15 +115,7 @@ function BrandIdentitySection() {
 
       <div className="comms-variants">
         {config.variants.map((v) => (
-          <div className="comms-variant-card" key={v.key}>
-            <h3>{v.key}</h3>
-            <p className="comms-variant-subject">{v.name}</p>
-            <p className="comms-variant-body">
-              {v.tagline}
-              {"\n\n"}
-              {v.description}
-            </p>
-          </div>
+          <VariantPreviewCard key={v.key} title={v.key} subject={v.name} body={`${v.tagline}\n\n${v.description}`} />
         ))}
       </div>
 
@@ -144,7 +162,7 @@ function ExperimentResultsSection() {
     getAdminExperiments()
       .then(({ experiments }) => Promise.all(experiments.map((e) => getExperimentResults(e.key))))
       .then(setResults)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }, []);
 
   if (error) return <p className="error">{error}</p>;
@@ -228,7 +246,7 @@ function CommunicationsSection() {
         setChannelStatus(t.channelStatus);
         setHistory(h.sends);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }
 
   useEffect(loadAll, []);
@@ -258,7 +276,7 @@ function CommunicationsSection() {
       await seedCommunicationTemplates();
       loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setSeeding(false);
     }
@@ -275,7 +293,7 @@ function CommunicationsSection() {
       setSendSummary(summary);
       loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setSending(false);
     }
@@ -345,14 +363,13 @@ function CommunicationsSection() {
 
           <div className="comms-variants">
             {variantsForSelection.map((t) => (
-              <div className="comms-variant-card" key={t.id}>
-                <h3>Variant {t.variant}</h3>
-                {t.subject && <p className="comms-variant-subject">{t.subject}</p>}
-                <p className="comms-variant-body">{t.body}</p>
-                {t.variablesUsed.length > 0 && (
-                  <p className="comms-variant-vars muted">Merge fields: {t.variablesUsed.join(", ")}</p>
-                )}
-              </div>
+              <VariantPreviewCard
+                key={t.id}
+                title={`Variant ${t.variant}`}
+                subject={t.subject}
+                body={t.body}
+                footer={t.variablesUsed.length > 0 ? `Merge fields: ${t.variablesUsed.join(", ")}` : undefined}
+              />
             ))}
             {variantsForSelection.length > 1 && (
               <p className="muted">
@@ -454,7 +471,7 @@ export default function AdminPage() {
     if (user?.role !== "admin") return;
     getAdminMetrics()
       .then(setMetrics)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }, [user]);
 
   if (userLoading) return null;

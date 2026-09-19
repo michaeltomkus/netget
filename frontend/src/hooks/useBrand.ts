@@ -3,6 +3,28 @@ import { getBrandOverride } from "../api/client";
 import { getBrandVariant, type BrandVariant } from "../config/brand";
 import { useExperiment } from "../experiments/useExperiment";
 
+// Shared across every useBrand() call in the app, not per-component — the
+// override rarely changes mid-session, so remounting AppShell (route
+// changes, etc.) reuses the first fetch instead of re-requesting it. A
+// failed fetch clears the cache so the next mount retries rather than
+// getting stuck on a rejected promise forever.
+let overridePromise: Promise<{ overrideVariant: string | null }> | null = null;
+
+function fetchBrandOverrideOnce(): Promise<{ overrideVariant: string | null }> {
+  if (!overridePromise) {
+    overridePromise = getBrandOverride().catch((err) => {
+      overridePromise = null;
+      throw err;
+    });
+  }
+  return overridePromise;
+}
+
+/** Test-only: clears the module-level override cache so each test starts fresh. */
+export function __resetBrandOverrideCacheForTests(): void {
+  overridePromise = null;
+}
+
 /**
  * Resolves which brand variant to render right now: an admin-set override
  * if one exists (see /admin's "Brand identity" panel), else the
@@ -27,7 +49,7 @@ export function useBrand(): BrandVariant {
   const [overrideVariant, setOverrideVariant] = useState<string | null>(null);
 
   useEffect(() => {
-    getBrandOverride()
+    fetchBrandOverrideOnce()
       .then(({ overrideVariant }) => setOverrideVariant(overrideVariant))
       .catch(() => {
         // Best-effort — if this fails, fall back to the experiment's own

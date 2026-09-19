@@ -16,11 +16,22 @@ import * as store from "../db/store.js";
  * just applied proactively here instead of after an outage.
  */
 export async function getEffectiveBrandVariant(): Promise<BrandVariant> {
-  let override: string | null = null;
-  try {
-    override = await store.getBrandOverride();
-  } catch (err) {
-    console.warn("Failed to read brand override, using the default variant:", err);
-  }
+  const override = await getBrandOverrideSafe();
   return getBrandVariant(override ?? undefined);
+}
+
+/**
+ * Reads the raw override value, falling back to `null` (no override) on any
+ * store error instead of throwing. Shared by every read site that just
+ * wants "the override, or none" — routes/brand.ts's public GET /override
+ * and admin.ts's GET /brand both use this instead of repeating the same
+ * try/catch.
+ */
+export async function getBrandOverrideSafe(): Promise<string | null> {
+  try {
+    return await store.getBrandOverride();
+  } catch (err) {
+    console.warn("Failed to read brand override:", err);
+    return null;
+  }
 }

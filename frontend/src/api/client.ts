@@ -226,12 +226,6 @@ export function getCommunicationHistory(limit = 100) {
   return request<{ sends: CommunicationSend[] }>(`/api/admin/communications/history?limit=${limit}`);
 }
 
-export function getCommunicationVariantCounts(typeName: string, channel: CommunicationChannel) {
-  return request<{ counts: { variant: string; status: string; count: number }[] }>(
-    `/api/admin/communications/variant-counts?typeName=${encodeURIComponent(typeName)}&channel=${channel}`,
-  );
-}
-
 export function sendCommunication(params: {
   typeName: string;
   channel: CommunicationChannel;

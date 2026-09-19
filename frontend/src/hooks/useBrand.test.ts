@@ -11,11 +11,15 @@ vi.mock("../experiments/useExperiment", () => ({
   useExperiment: () => ({ variant: mockExperimentVariant, logConversion: vi.fn() }),
 }));
 
-const { useBrand } = await import("./useBrand");
+const { useBrand, __resetBrandOverrideCacheForTests } = await import("./useBrand");
 
 beforeEach(() => {
   getBrandOverride.mockReset();
   mockExperimentVariant = "control";
+  // The hook caches the override fetch at module scope (across mounts) —
+  // reset it so each test starts from a clean slate instead of reusing a
+  // previous test's cached promise.
+  __resetBrandOverrideCacheForTests();
 });
 
 describe("useBrand", () => {
@@ -51,5 +55,28 @@ describe("useBrand", () => {
     // the experiment variant throughout, never throwing.
     await waitFor(() => expect(getBrandOverride).toHaveBeenCalled());
     expect(result.current.name).toBe("InterviewAI");
+  });
+
+  it("reuses a single in-flight/settled override fetch across remounts instead of re-requesting it", async () => {
+    getBrandOverride.mockResolvedValue({ overrideVariant: "alt" });
+    const first = renderHook(() => useBrand());
+    await waitFor(() => expect(first.result.current.name).toBe("PrepPilot"));
+
+    const second = renderHook(() => useBrand());
+    await waitFor(() => expect(second.result.current.name).toBe("PrepPilot"));
+
+    expect(getBrandOverride).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears the cache and retries on the next mount after a failed fetch", async () => {
+    getBrandOverride.mockRejectedValueOnce(new Error("network error"));
+    const first = renderHook(() => useBrand());
+    await waitFor(() => expect(getBrandOverride).toHaveBeenCalledTimes(1));
+    expect(first.result.current.name).toBe("InterviewAI");
+
+    getBrandOverride.mockResolvedValueOnce({ overrideVariant: "alt" });
+    const second = renderHook(() => useBrand());
+    await waitFor(() => expect(second.result.current.name).toBe("PrepPilot"));
+    expect(getBrandOverride).toHaveBeenCalledTimes(2);
   });
 });

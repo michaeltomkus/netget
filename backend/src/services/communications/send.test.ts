@@ -3,14 +3,16 @@ import type { CommunicationTemplate, User } from "../../types.js";
 
 const listCommunicationTemplates = vi.fn<() => Promise<CommunicationTemplate[]>>();
 const listUsers = vi.fn<() => Promise<User[]>>();
-const listActiveSubscriptions = vi.fn<() => Promise<{ userId: string }[]>>();
+const getUserByEmail = vi.fn<(email: string) => Promise<User | undefined>>();
+const listActiveSubscriberUsers = vi.fn<() => Promise<User[]>>();
 const createCommunicationSends = vi.fn<(rows: unknown[]) => Promise<void>>();
 
 vi.mock("../../db/store.js", () => ({
   store: {
     listCommunicationTemplates: (...args: []) => listCommunicationTemplates(...args),
     listUsers: (...args: []) => listUsers(...args),
-    listActiveSubscriptions: (...args: []) => listActiveSubscriptions(...args),
+    getUserByEmail: (...args: [string]) => getUserByEmail(...args),
+    listActiveSubscriberUsers: (...args: []) => listActiveSubscriberUsers(...args),
     createCommunicationSends: (...args: [unknown[]]) => createCommunicationSends(...args),
   },
 }));
@@ -56,7 +58,8 @@ function makeUser(id: string, email: string): User {
 beforeEach(() => {
   listCommunicationTemplates.mockReset();
   listUsers.mockReset();
-  listActiveSubscriptions.mockReset();
+  getUserByEmail.mockReset();
+  listActiveSubscriberUsers.mockReset();
   createCommunicationSends.mockReset();
   isChannelConfigured.mockReset();
   dispatchMessage.mockReset();
@@ -125,9 +128,11 @@ describe("sendCommunication", () => {
     expect(new Set(rows.map((r) => r.batchId)).size).toBe(1);
   });
 
-  it("resolves a 'single' audience by email, case-insensitively, and is empty for no match", async () => {
+  it("resolves a 'single' audience via a targeted email lookup, and is empty for no match", async () => {
     listCommunicationTemplates.mockResolvedValue([makeTemplate({ variant: "A" })]);
-    listUsers.mockResolvedValue([makeUser("u1", "Someone@Example.com")]);
+    getUserByEmail.mockImplementation(async (email) =>
+      email === "someone@example.com" ? makeUser("u1", "Someone@Example.com") : undefined,
+    );
     isChannelConfigured.mockReturnValue(false);
 
     const found = await sendCommunication({
@@ -137,6 +142,9 @@ describe("sendCommunication", () => {
       sentByUserId: "admin_1",
     });
     expect(found.results).toHaveLength(1);
+    // Confirms this goes through a targeted lookup, not listUsers() + a JS filter.
+    expect(getUserByEmail).toHaveBeenCalledWith("someone@example.com");
+    expect(listUsers).not.toHaveBeenCalled();
 
     const notFound = await sendCommunication({
       typeName: "Welcome / Onboarding",
@@ -147,10 +155,9 @@ describe("sendCommunication", () => {
     expect(notFound.results).toHaveLength(0);
   });
 
-  it("filters to active subscribers only", async () => {
+  it("filters to active subscribers only, via a single filtered query", async () => {
     listCommunicationTemplates.mockResolvedValue([makeTemplate({ variant: "A" })]);
-    listUsers.mockResolvedValue([makeUser("u1", "a@example.com"), makeUser("u2", "b@example.com")]);
-    listActiveSubscriptions.mockResolvedValue([{ userId: "u2" }]);
+    listActiveSubscriberUsers.mockResolvedValue([makeUser("u2", "b@example.com")]);
     isChannelConfigured.mockReturnValue(false);
 
     const summary = await sendCommunication({
@@ -160,6 +167,8 @@ describe("sendCommunication", () => {
       sentByUserId: "admin_1",
     });
     expect(summary.results).toEqual([expect.objectContaining({ userId: "u2" })]);
+    // Confirms this is one filtered query, not listUsers() + listActiveSubscriptions() intersected in JS.
+    expect(listUsers).not.toHaveBeenCalled();
   });
 
   it("records skipped_no_provider without calling dispatch when the channel isn't configured", async () => {

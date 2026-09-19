@@ -100,6 +100,12 @@ export async function listUsers(): Promise<User[]> {
   return rows.map(mapUser);
 }
 
+/** Case-insensitive — mirrors how sign-in/checkout email matching already treats email as case-insensitive elsewhere in this app. */
+export async function getUserByEmail(email: string): Promise<User | undefined> {
+  const row = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
+  return row ? mapUser(row) : undefined;
+}
+
 export async function countUsers(): Promise<number> {
   return prisma.user.count();
 }
@@ -174,6 +180,15 @@ export async function listActiveSubscriptions(): Promise<Subscription[]> {
     orderBy: { createdAt: "desc" },
   });
   return rows.map(mapSubscription);
+}
+
+/** Users with at least one active/trialing/past_due subscription — one filtered query instead of fetching every user and every subscription and intersecting them in JS. */
+export async function listActiveSubscriberUsers(): Promise<User[]> {
+  const rows = await prisma.user.findMany({
+    where: { subscriptions: { some: { status: { in: ACTIVE_STATUSES } } } },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(mapUser);
 }
 
 // ---- Sessions ----
@@ -839,11 +854,6 @@ export async function listCommunicationTemplates(): Promise<CommunicationTemplat
   return rows.map(mapCommunicationTemplate);
 }
 
-export async function getCommunicationTemplateById(id: string): Promise<CommunicationTemplate | undefined> {
-  const row = await prisma.communicationTemplate.findUnique({ where: { id } });
-  return row ? mapCommunicationTemplate(row) : undefined;
-}
-
 function mapCommunicationSend(row: {
   id: string;
   templateId: string;
@@ -901,19 +911,6 @@ export async function listCommunicationSends(limit = 100): Promise<Communication
   return rows.map(mapCommunicationSend);
 }
 
-/** Sent-count per variant for one lifecycle event + channel — the A/B "who got what" tally shown in the composer. */
-export async function getCommunicationVariantCounts(
-  typeName: string,
-  channel: CommunicationTemplate["channel"],
-): Promise<{ variant: string; status: CommunicationSend["status"]; count: number }[]> {
-  const rows = await prisma.communicationSend.groupBy({
-    by: ["variant", "status"],
-    where: { template: { typeName, channel } },
-    _count: { _all: true },
-  });
-  return rows.map((r) => ({ variant: r.variant, status: r.status as CommunicationSend["status"], count: r._count._all }));
-}
-
 // ---- Brand identity admin override ----
 
 /** null means "no override, let the brand-identity experiment decide" — the steady-state row (or no row at all yet). */
@@ -939,10 +936,12 @@ export const store = {
   setUserStripeCustomerId,
   getUserByStripeCustomerId,
   listUsers,
+  getUserByEmail,
   countUsers,
   upsertSubscriptionByStripeId,
   getActiveSubscriptionForUser,
   listActiveSubscriptions,
+  listActiveSubscriberUsers,
   createSession,
   getSession,
   deleteSession,
@@ -976,10 +975,8 @@ export const store = {
   getExperimentConversionCounts,
   upsertCommunicationTemplate,
   listCommunicationTemplates,
-  getCommunicationTemplateById,
   createCommunicationSends,
   listCommunicationSends,
-  getCommunicationVariantCounts,
   getBrandOverride,
   setBrandOverride,
 };

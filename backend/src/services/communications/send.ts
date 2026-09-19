@@ -17,19 +17,15 @@ export type AudienceSelector =
   | { kind: "active_subscribers" };
 
 async function resolveAudience(selector: AudienceSelector): Promise<User[]> {
-  const users = await store.listUsers();
   switch (selector.kind) {
     case "single": {
-      const match = users.find((u) => u.email.toLowerCase() === selector.email.toLowerCase());
+      const match = await store.getUserByEmail(selector.email);
       return match ? [match] : [];
     }
-    case "active_subscribers": {
-      const subs = await store.listActiveSubscriptions();
-      const activeUserIds = new Set(subs.map((s) => s.userId));
-      return users.filter((u) => activeUserIds.has(u.id));
-    }
+    case "active_subscribers":
+      return store.listActiveSubscriberUsers();
     case "all":
-      return users;
+      return store.listUsers();
   }
 }
 
@@ -46,14 +42,14 @@ function hashToUnit(input: string): number {
   return (hash >>> 0) / 0xffffffff;
 }
 
-function pickVariant(variants: CommunicationTemplate[], userId: string): CommunicationTemplate {
-  const sorted = [...variants].sort((a, b) => a.variant.localeCompare(b.variant));
-  if (sorted.length === 1) return sorted[0];
+/** `sortedVariants` must already be sorted (see call site) — the same order is reused for every recipient in a batch, so sorting once per batch instead of once per recipient avoids an identical re-sort per person on a send. */
+function pickVariant(sortedVariants: CommunicationTemplate[], userId: string): CommunicationTemplate {
+  if (sortedVariants.length === 1) return sortedVariants[0];
   const bucket = Math.min(
-    Math.floor(hashToUnit(`${sorted[0].typeName}:${sorted[0].channel}:${userId}`) * sorted.length),
-    sorted.length - 1,
+    Math.floor(hashToUnit(`${sortedVariants[0].typeName}:${sortedVariants[0].channel}:${userId}`) * sortedVariants.length),
+    sortedVariants.length - 1,
   );
-  return sorted[bucket];
+  return sortedVariants[bucket];
 }
 
 export interface SendCommunicationParams {
@@ -84,6 +80,8 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
   if (variants.length === 0) {
     throw new Error(`No template found for "${params.typeName}" on channel "${params.channel}"`);
   }
+  // Sorted once here, not once per recipient — pickVariant reuses this same order for every recipient in the batch.
+  const sortedVariants = [...variants].sort((a, b) => a.variant.localeCompare(b.variant));
 
   const recipients = await resolveAudience(params.audience);
   const batchId = uuidv4();
@@ -95,7 +93,7 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
 
   const outcomes = await Promise.all(
     recipients.map(async (user) => {
-      const template = pickVariant(variants, user.id);
+      const template = pickVariant(sortedVariants, user.id);
       const vars: Record<string, string> = {
         email: user.email,
         first_name: user.name?.split(" ")[0] ?? user.email.split("@")[0],

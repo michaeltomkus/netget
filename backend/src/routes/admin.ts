@@ -8,6 +8,7 @@ import { seedCommunicationTemplates } from "../services/communications/seedTempl
 import { sendCommunication, type AudienceSelector } from "../services/communications/send.js";
 import { isChannelConfigured } from "../services/communications/providers.js";
 import { BRAND_VARIANT_KEYS, getBrandVariant } from "../config/brand.js";
+import { getBrandOverrideSafe } from "../services/brand.js";
 import type { CommunicationChannel, ExperimentResults } from "../types.js";
 
 export const adminRouter = Router();
@@ -116,10 +117,7 @@ adminRouter.get("/experiments/:key/results", async (req, res) => {
 
 adminRouter.get("/brand", async (_req, res) => {
   const variants = BRAND_VARIANT_KEYS.map((key) => ({ key, ...getBrandVariant(key) }));
-  const overrideVariant = await store.getBrandOverride().catch((err) => {
-    console.warn("Failed to read brand override:", err);
-    return null;
-  });
+  const overrideVariant = await getBrandOverrideSafe();
   res.json({ variants, overrideVariant });
 });
 
@@ -151,35 +149,40 @@ adminRouter.post("/brand/override", async (req, res) => {
 const CHANNELS: CommunicationChannel[] = ["email", "sms", "push"];
 
 adminRouter.get("/communications/templates", async (_req, res) => {
-  const templates = await store.listCommunicationTemplates();
-  res.json({
-    templates,
-    channelStatus: Object.fromEntries(CHANNELS.map((c) => [c, isChannelConfigured(c)])),
-  });
+  try {
+    const templates = await store.listCommunicationTemplates();
+    res.json({
+      templates,
+      channelStatus: Object.fromEntries(CHANNELS.map((c) => [c, isChannelConfigured(c)])),
+    });
+  } catch (err) {
+    console.error("Failed to list communication templates:", err);
+    res.status(502).json({ error: "Failed to load templates — try again" });
+  }
 });
 
 // Idempotent — upserts by each template's stable key, so this is safe to
 // call again after the reference set changes, and safe for an admin to
 // click more than once by accident.
 adminRouter.post("/communications/templates/seed", async (_req, res) => {
-  const count = await seedCommunicationTemplates();
-  res.json({ seeded: count });
+  try {
+    const count = await seedCommunicationTemplates();
+    res.json({ seeded: count });
+  } catch (err) {
+    console.error("Failed to seed communication templates:", err);
+    res.status(502).json({ error: "Failed to seed templates — try again" });
+  }
 });
 
 adminRouter.get("/communications/history", async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
-  const sends = await store.listCommunicationSends(limit);
-  res.json({ sends });
-});
-
-adminRouter.get("/communications/variant-counts", async (req, res) => {
-  const typeName = String(req.query.typeName ?? "");
-  const channel = String(req.query.channel ?? "") as CommunicationChannel;
-  if (!typeName || !CHANNELS.includes(channel)) {
-    return res.status(400).json({ error: "typeName and a valid channel are required" });
+  try {
+    const sends = await store.listCommunicationSends(limit);
+    res.json({ sends });
+  } catch (err) {
+    console.error("Failed to load communication history:", err);
+    res.status(502).json({ error: "Failed to load history — try again" });
   }
-  const counts = await store.getCommunicationVariantCounts(typeName, channel);
-  res.json({ counts });
 });
 
 adminRouter.post("/communications/send", communicationSendLimiter, async (req, res) => {
