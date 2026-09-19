@@ -2,10 +2,12 @@ import { Router, type Request, type Response as ExpressResponse } from "express"
 import { v4 as uuidv4 } from "uuid";
 import * as store from "../db/store.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createSessionLimiter, gradeSessionLimiter } from "../middleware/rateLimit.js";
 import { checkFreeTierLimit } from "./billing.js";
 import { generateQuestionSet } from "../services/questionGeneration.js";
 import { runGradingPipeline } from "../services/grading/gradingPipeline.js";
 import { savePresentationFrames } from "../services/media.js";
+import { captureException } from "../services/sentry.js";
 import type {
   DynamicFollowUp,
   PresentationSignals,
@@ -65,7 +67,7 @@ sessionsRouter.get("/", async (req, res) => {
   res.json({ sessions, total, limit, offset });
 });
 
-sessionsRouter.post("/", async (req, res) => {
+sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
   const { role, seniority, companyContext, stressIntensity, scheduledDurationMinutes } =
     req.body ?? {};
 
@@ -130,6 +132,7 @@ sessionsRouter.post("/", async (req, res) => {
     });
   } catch (err) {
     console.error("Failed to create session:", err);
+    captureException(err, { route: "POST /api/sessions", userId: req.appUser!.id });
     await store.deleteSession(session.id);
     res.status(502).json({ error: "Failed to generate question set", detail: String(err) });
   }
@@ -243,7 +246,7 @@ sessionsRouter.post("/:id/presentation", async (req, res) => {
   res.status(201).json({ ok: true, frameCount: frameRefs.length });
 });
 
-sessionsRouter.post("/:id/grade", async (req, res) => {
+sessionsRouter.post("/:id/grade", gradeSessionLimiter, async (req, res) => {
   const session = await loadOwnedSession(req, res);
   if (!session) return;
 
@@ -255,6 +258,7 @@ sessionsRouter.post("/:id/grade", async (req, res) => {
     res.json({ result });
   } catch (err) {
     console.error("Failed to grade session:", err);
+    captureException(err, { route: "POST /api/sessions/:id/grade", sessionId: session.id });
     res.status(502).json({ error: "Failed to grade session", detail: String(err) });
   }
 });

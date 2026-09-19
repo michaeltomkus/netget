@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The generated Prisma client isn't committed (node_modules is
+      # gitignored) and this Prisma version has no automatic postinstall
+      # hook, so backend typecheck/build/test would otherwise fail on
+      # missing generated types. This only reads the schema file — no
+      # DATABASE_URL or reachable database needed.
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=backend/prisma/schema.prisma
+
+      - name: Backend typecheck
+        run: npm run --workspace backend typecheck
+
+      # Every backend test mocks its own I/O (Prisma/store, Clerk,
+      # Anthropic, Stripe) — no real database, network, or API key needed.
+      - name: Backend tests
+        run: npm run --workspace backend test
+
+      - name: Backend build
+        run: npm run build:backend
+
+      - name: Frontend typecheck
+        run: npm run --workspace frontend typecheck
+
+      - name: Frontend tests
+        run: npm run --workspace frontend test
+
+      - name: Frontend build
+        run: npm run build:frontend

@@ -2,6 +2,7 @@ import { Router } from "express";
 import type Stripe from "stripe";
 import * as store from "../db/store.js";
 import { getStripeClient, isStripeConfigured } from "../services/stripe.js";
+import { captureException } from "../services/sentry.js";
 import type { SubscriptionStatus } from "../types.js";
 
 export const stripeWebhookRouter = Router();
@@ -44,6 +45,10 @@ stripeWebhookRouter.post("/", async (req, res) => {
     res.json({ received: true });
   } catch (err) {
     console.error(`Failed to process Stripe webhook ${event.type}:`, err);
+    // A silently-failing webhook is exactly the kind of thing that would
+    // otherwise go unnoticed until a subscriber complains — worth alerting
+    // on even though it's already handled locally.
+    captureException(err, { stripeEventType: event.type, stripeEventId: event.id });
     // 500 so Stripe retries — losing a subscription status update silently
     // would let a cancelled subscriber keep free-tier-bypassing access.
     res.status(500).json({ error: "Failed to process webhook" });

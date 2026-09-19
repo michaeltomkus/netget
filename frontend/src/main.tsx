@@ -4,15 +4,34 @@ import { BrowserRouter } from "react-router-dom";
 import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
 import AuthBridge from "./auth/AuthBridge";
+import { initSentry, SentryErrorBoundary } from "./services/sentry";
 import "./styles.css";
+
+initSentry();
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 
+function ErrorFallback() {
+  return (
+    <div className="app-shell">
+      <div className="voice-blocked">
+        <p className="error">Something went wrong loading InterviewAI.</p>
+        <p className="muted">Try reloading the page. If it keeps happening, let us know.</p>
+        <button type="button" className="secondary" onClick={() => window.location.reload()}>
+          Reload
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const root = (
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <SentryErrorBoundary fallback={<ErrorFallback />}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </SentryErrorBoundary>
   </React.StrictMode>
 );
 

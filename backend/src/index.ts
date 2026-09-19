@@ -10,6 +10,10 @@ import { meRouter } from "./routes/me.js";
 import { attachSttGateway } from "./gateway/sttGateway.js";
 import { MEDIA_DIR } from "./services/media.js";
 import { clerkAuth } from "./middleware/auth.js";
+import { globalApiLimiter } from "./middleware/rateLimit.js";
+import { attachExpressErrorHandler, initSentry, isSentryConfigured } from "./services/sentry.js";
+
+initSentry();
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
@@ -35,6 +39,11 @@ if (process.env.CLERK_SECRET_KEY) {
   app.use(clerkAuth);
 }
 
+// A coarse per-IP floor across every /api/* route; the two genuinely
+// expensive routes (session creation, grading) get their own tighter,
+// user-keyed limits on top of this — see routes/sessions.ts.
+app.use("/api", globalApiLimiter);
+
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
@@ -43,6 +52,7 @@ app.get("/api/health", (_req, res) => {
     hasStt: Boolean(process.env.DEEPGRAM_API_KEY),
     hasAuth: Boolean(process.env.CLERK_SECRET_KEY),
     hasBilling: Boolean(process.env.STRIPE_SECRET_KEY),
+    hasErrorMonitoring: isSentryConfigured(),
   });
 });
 
@@ -51,6 +61,15 @@ app.use("/api/billing", billingRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/me", meRouter);
 app.use("/media", express.static(MEDIA_DIR));
+
+// Mounted after every route: reports an error passed to next(err), or
+// thrown synchronously in a non-async handler, to Sentry before Express's
+// own default handler responds. Most routes already catch their own errors
+// locally (logged + a clean error response sent) — this is the safety net
+// for anything that isn't, plus routes/stripeWebhook.ts and the grading
+// path additionally call captureException() directly on failures that are
+// handled locally but still worth alerting on.
+attachExpressErrorHandler(app);
 
 const server = createServer(app);
 attachSttGateway(server);

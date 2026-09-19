@@ -174,6 +174,45 @@ force a full re-render of the session page (which is also streaming a live trans
 60 times a second. Degrades gracefully to the old static look wherever there's no real
 audio to analyze (the landing page's hero mock) or the browser lacks Web Audio.
 
+**Operational hardening**: rate limiting (`express-rate-limit`), a real automated test
+suite, CI, and error monitoring — the highest-priority engineering/ops gaps once this
+stopped being a toy.
+
+- **Rate limiting**: a coarse per-IP floor (300 req/15min) across every `/api/*`
+  route, plus tighter user-keyed limits on the two genuinely expensive actions —
+  session creation (10/15min) and grading (20/15min) — since each spends real
+  Anthropic (and, for creation, Azure/Deepgram) cost. Keyed by the authenticated
+  user rather than IP where possible, so a leaked token can't dodge the limit by
+  hitting the API from a different address than its owner.
+- **Automated tests** (Vitest, both workspaces — `npm run test` in either): backend
+  unit tests for the Stripe plan registry and free-tier gating logic, plus
+  supertest-driven integration tests for session validation, ownership (404-not-403),
+  and the rate limiter itself, all with Prisma/Clerk/Anthropic/Stripe mocked out —
+  nothing hits a real database, network, or API key. Frontend tests cover
+  `formatPlanPrice`, `useOnlineStatus`, and `AvatarRenderer`'s graceful fallback when
+  Web Audio isn't available. This is a starting suite, not full coverage — most UI
+  flows are still only verified manually.
+- **CI** (`.github/workflows/ci.yml`): typecheck, test, and build for both workspaces
+  on every push and PR. No deploy step (nothing to deploy to yet) and no lint step
+  (no ESLint config exists in this repo).
+- **Error monitoring** (Sentry, optional — `SENTRY_DSN`/`VITE_SENTRY_DSN`): backend
+  captures uncaught exceptions/rejections automatically once initialized, plus an
+  Express error-handling middleware and explicit `captureException()` calls on the
+  Stripe webhook and grading failure paths — the two "fails silently in production"
+  risks named as the reason to add this at all. Frontend wraps the whole app in a
+  `Sentry.ErrorBoundary` with a friendly fallback UI, which works as a plain React
+  error boundary (no blank white screen on a render crash) even without a DSN
+  configured. Without either DSN, everything no-ops — same graceful-degradation
+  pattern as every other provider integration in this app.
+
+Two disclosed trade-offs from this pass: `vitest@2.1.9` (pinned for the frontend,
+since `vitest@5`'s `vite` peer requirement conflicts with this project's `vite@^5.4`)
+carries a critical advisory in its `--ui` dev-server mode — this project's test
+script only ever runs `vitest run` (used in CI too), never `--ui`, so that surface is
+never exposed; and Sentry's full request-tracing needs Node's `--import` instrumentation
+flag, which this project's plain `tsc`/`tsx` scripts don't set up — error capture
+(the actual ask) works fully without it, so that rework was skipped for now.
+
 ## Setup
 
 ```bash
