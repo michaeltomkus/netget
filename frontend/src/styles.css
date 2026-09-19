@@ -1571,8 +1571,18 @@ button.danger:disabled {
   letter-spacing: 0.03em;
 }
 
-.admin-communications {
+.admin-communications,
+.admin-brand {
   margin-top: 32px;
+}
+
+.admin-brand .comms-variants,
+.admin-brand .comms-composer-row {
+  margin-top: 16px;
+}
+
+.admin-brand button {
+  margin-top: 16px;
 }
 
 .comms-composer {

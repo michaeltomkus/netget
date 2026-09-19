@@ -7,6 +7,7 @@ import { EXPERIMENTS, getExperiment } from "../services/experiments.js";
 import { seedCommunicationTemplates } from "../services/communications/seedTemplates.js";
 import { sendCommunication, type AudienceSelector } from "../services/communications/send.js";
 import { isChannelConfigured } from "../services/communications/providers.js";
+import { BRAND_VARIANT_KEYS, getBrandVariant } from "../config/brand.js";
 import type { CommunicationChannel, ExperimentResults } from "../types.js";
 
 export const adminRouter = Router();
@@ -100,6 +101,42 @@ adminRouter.get("/experiments/:key/results", async (req, res) => {
     conversions,
   };
   res.json(results);
+});
+
+// --- Brand identity control -------------------------------------------
+//
+// Distinct from /metrics' read-only posture, same as the end-user
+// communications endpoints below: this is a genuine write action (forcing
+// which brand.config.json variant every visitor sees), explicitly
+// requested. It sits alongside, not instead of, the "brand-identity"
+// experiment registered in services/experiments.ts — forcing a variant
+// here overrides that experiment's per-visitor split without unregistering
+// it, so /admin/experiments/brand-identity/results keeps showing
+// historical data throughout.
+
+adminRouter.get("/brand", async (_req, res) => {
+  const variants = BRAND_VARIANT_KEYS.map((key) => ({ key, ...getBrandVariant(key) }));
+  const overrideVariant = await store.getBrandOverride().catch((err) => {
+    console.warn("Failed to read brand override:", err);
+    return null;
+  });
+  res.json({ variants, overrideVariant });
+});
+
+adminRouter.post("/brand/override", async (req, res) => {
+  const { variantKey } = req.body ?? {};
+  if (variantKey !== null && !BRAND_VARIANT_KEYS.includes(variantKey)) {
+    return res.status(400).json({
+      error: `variantKey must be null (let the experiment decide) or one of: ${BRAND_VARIANT_KEYS.join(", ")}`,
+    });
+  }
+  try {
+    await store.setBrandOverride(variantKey, req.appUser!.id);
+  } catch (err) {
+    console.error("Failed to save brand override:", err);
+    return res.status(502).json({ error: "Failed to save — try again" });
+  }
+  res.json({ overrideVariant: variantKey });
 });
 
 // --- End-user communications ---------------------------------------

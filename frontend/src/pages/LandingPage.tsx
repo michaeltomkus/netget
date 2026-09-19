@@ -6,19 +6,20 @@ import type { Plan } from "../api/types";
 import { formatPlanPrice } from "../utils/pricing";
 import { setPendingCheckoutPlan } from "../utils/checkoutIntent";
 import { useExperiment } from "../experiments/useExperiment";
-import { getBrandVariant } from "../config/brand";
-
-const brand = getBrandVariant();
+import { useBrand } from "../hooks/useBrand";
 
 // A/B-tested hero section — see experiments/experiments.ts's
 // "landing-hero-copy" entry and useExperiment's usage below. Demonstrates
 // testing a page sub-component: only this section's copy varies, the rest
-// of the page is shared between variants.
+// of the page is shared between variants. control's lede keeps a
+// "{brandName}" placeholder rather than baking in a name, since the brand
+// itself is separately A/B-testable (or admin-overridable) via
+// useBrand() — see where `hero.lede` is rendered below.
 const HERO_COPY = {
   control: {
     eyebrow: "AI mock interviews · voice only",
     headline: "Walk into your next interview already having done it.",
-    lede: `${brand.name} asks the questions out loud, times you, and pushes back when it counts. You answer by voice — no typing, no reading ahead — then get a graded report card on content, delivery, and composure.`,
+    lede: "{brandName} asks the questions out loud, times you, and pushes back when it counts. You answer by voice — no typing, no reading ahead — then get a graded report card on content, delivery, and composure.",
     cta: "Start practicing — free",
   },
   direct: {
@@ -269,7 +270,9 @@ export default function LandingPage() {
   const premiumPlan = plans.find((p) => p.id === "premium");
 
   const { variant: heroVariant, logConversion: logHeroConversion } = useExperiment("landing-hero-copy");
+  const brand = useBrand();
   const hero = HERO_COPY[heroVariant];
+  const heroLede = hero.lede.replace("{brandName}", brand.name);
 
   return (
     <div className="landing">
@@ -315,7 +318,7 @@ export default function LandingPage() {
           <div>
             <span className="eyebrow">{hero.eyebrow}</span>
             <h1 className="landing-h1">{hero.headline}</h1>
-            <p className="landing-lede">{hero.lede}</p>
+            <p className="landing-lede">{heroLede}</p>
             <div className="landing-hero-ctas">
               <CtaButton className="" onClick={() => logHeroConversion("hero_cta_click")}>
                 {hero.cta}

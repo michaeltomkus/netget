@@ -914,6 +914,22 @@ export async function getCommunicationVariantCounts(
   return rows.map((r) => ({ variant: r.variant, status: r.status as CommunicationSend["status"], count: r._count._all }));
 }
 
+// ---- Brand identity admin override ----
+
+/** null means "no override, let the brand-identity experiment decide" — the steady-state row (or no row at all yet). */
+export async function getBrandOverride(): Promise<string | null> {
+  const row = await prisma.brandOverride.findUnique({ where: { id: "singleton" } });
+  return row?.variantKey ?? null;
+}
+
+export async function setBrandOverride(variantKey: string | null, updatedByUserId: string): Promise<void> {
+  await prisma.brandOverride.upsert({
+    where: { id: "singleton" },
+    update: { variantKey, updatedByUserId },
+    create: { id: "singleton", variantKey, updatedByUserId },
+  });
+}
+
 // Kept as a namespace object too, for call sites that prefer `store.method()`
 // over named imports — both work identically.
 export const store = {
@@ -964,4 +980,6 @@ export const store = {
   createCommunicationSends,
   listCommunicationSends,
   getCommunicationVariantCounts,
+  getBrandOverride,
+  setBrandOverride,
 };

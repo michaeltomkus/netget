@@ -255,3 +255,18 @@ export interface CommunicationSendSummary {
   configured: boolean;
   results: CommunicationSendResult[];
 }
+
+/** One brand.config.json variant, as GET /api/admin/brand lists it. */
+export interface BrandVariantInfo {
+  key: string;
+  name: string;
+  tagline: string;
+  description: string;
+  footerTagline: string;
+}
+
+export interface AdminBrandConfig {
+  variants: BrandVariantInfo[];
+  /** null = no admin override, the "brand-identity" experiment decides per visitor. */
+  overrideVariant: string | null;
+}

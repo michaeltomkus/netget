@@ -23,6 +23,13 @@ vi.mock("./providers.js", () => ({
   dispatchMessage: (...args: [string, unknown]) => dispatchMessage(...args),
 }));
 
+const getEffectiveBrandVariant = vi.fn<
+  () => Promise<{ name: string; tagline: string; description: string; footerTagline: string }>
+>();
+vi.mock("../brand.js", () => ({
+  getEffectiveBrandVariant: (...args: []) => getEffectiveBrandVariant(...args),
+}));
+
 const { sendCommunication } = await import("./send.js");
 
 function makeTemplate(overrides: Partial<CommunicationTemplate>): CommunicationTemplate {
@@ -53,6 +60,12 @@ beforeEach(() => {
   createCommunicationSends.mockReset();
   isChannelConfigured.mockReset();
   dispatchMessage.mockReset();
+  getEffectiveBrandVariant.mockReset().mockResolvedValue({
+    name: "InterviewAI",
+    tagline: "mock interview practice",
+    description: "desc",
+    footerTagline: "footer",
+  });
 });
 
 describe("sendCommunication", () => {
@@ -61,6 +74,30 @@ describe("sendCommunication", () => {
     await expect(
       sendCommunication({ typeName: "Nope", channel: "email", audience: { kind: "all" }, sentByUserId: "admin_1" }),
     ).rejects.toThrow(/No template found/);
+  });
+
+  it("uses whichever brand variant is currently effective (e.g. an admin override) for {app_name}", async () => {
+    listCommunicationTemplates.mockResolvedValue([makeTemplate({ variant: "A" })]);
+    listUsers.mockResolvedValue([makeUser("u1", "a@example.com")]);
+    isChannelConfigured.mockReturnValue(false);
+    getEffectiveBrandVariant.mockResolvedValue({
+      name: "PrepPilot",
+      tagline: "t",
+      description: "d",
+      footerTagline: "f",
+    });
+
+    const summary = await sendCommunication({
+      typeName: "Welcome / Onboarding",
+      channel: "email",
+      audience: { kind: "all" },
+      sentByUserId: "admin_1",
+    });
+
+    expect(createCommunicationSends).toHaveBeenCalledWith([
+      expect.objectContaining({ renderedBody: expect.stringContaining("welcome to PrepPilot") }),
+    ]);
+    expect(summary.results).toHaveLength(1);
   });
 
   it("sends to every user for audience 'all', rendering merge fields", async () => {

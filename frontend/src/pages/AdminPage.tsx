@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
+  getAdminBrandConfig,
   getAdminExperiments,
   getAdminMetrics,
   getCommunicationHistory,
@@ -8,8 +9,10 @@ import {
   getExperimentResults,
   seedCommunicationTemplates,
   sendCommunication,
+  setAdminBrandOverride,
 } from "../api/client";
 import type {
+  AdminBrandConfig,
   AdminMetrics,
   AudienceSelector,
   CommunicationChannel,
@@ -29,6 +32,107 @@ function formatCents(cents: number | undefined): string {
 function formatRate(conversions: number, exposures: number): string {
   if (exposures === 0) return "—";
   return `${((conversions / exposures) * 100).toFixed(1)}%`;
+}
+
+/**
+ * Force which brand.config.json variant everyone sees, or hand the
+ * decision back to the "brand-identity" experiment's per-visitor split.
+ * A genuine write action — distinct from the rest of this dashboard's
+ * metrics-only posture, same as the end-user communications section below
+ * — see the scope note above adminRouter.get("/brand", ...) in admin.ts.
+ * Live A/B results for this same experiment still show in
+ * ExperimentResultsSection below, whether or not an override is active.
+ */
+function BrandIdentitySection() {
+  const [config, setConfig] = useState<AdminBrandConfig | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  function load() {
+    getAdminBrandConfig()
+      .then((c) => {
+        setConfig(c);
+        setSelected(c.overrideVariant ?? "");
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }
+
+  useEffect(load, []);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await setAdminBrandOverride(selected || null);
+      setSaved(true);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (error) return <p className="error">{error}</p>;
+  if (!config) return null;
+
+  return (
+    <section className="admin-brand">
+      <h2>Brand identity</h2>
+      <p className="muted">
+        Force one brand name/tagline for every visitor, or let the "brand-identity" experiment
+        keep splitting traffic per visitor — see results below either way.
+      </p>
+
+      <div className="comms-variants">
+        {config.variants.map((v) => (
+          <div className="comms-variant-card" key={v.key}>
+            <h3>{v.key}</h3>
+            <p className="comms-variant-subject">{v.name}</p>
+            <p className="comms-variant-body">
+              {v.tagline}
+              {"\n\n"}
+              {v.description}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="comms-composer-row">
+        <label>
+          Show everyone
+          <select
+            value={selected}
+            onChange={(e) => {
+              setSelected(e.target.value);
+              setSaved(false);
+            }}
+          >
+            <option value="">Let the experiment decide (current split)</option>
+            {config.variants.map((v) => (
+              <option value={v.key} key={v.key}>
+                {v.name} ({v.key})
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <button onClick={handleSave} disabled={saving}>
+        {saving ? "Saving…" : "Save"}
+      </button>
+      {saved && (
+        <p className="muted">
+          {config.overrideVariant
+            ? `Now forcing "${config.overrideVariant}" for everyone.`
+            : "Now letting the experiment decide per visitor."}
+        </p>
+      )}
+    </section>
+  );
 }
 
 /** Read-only — same "metrics only" posture as the rest of this dashboard; there's nothing here to start, stop, or edit. */
@@ -403,6 +507,7 @@ export default function AdminPage() {
         </div>
       )}
 
+      <BrandIdentitySection />
       <ExperimentResultsSection />
       <CommunicationsSection />
     </div>

@@ -10,10 +10,16 @@ import SettingsPage from "./pages/SettingsPage";
 import AdminPage from "./pages/AdminPage";
 import OfflineBanner from "./components/OfflineBanner";
 import { useAppUser } from "./hooks/useAppUser";
+import { useBrand } from "./hooks/useBrand";
 import { getBrandVariant } from "./config/brand";
 
 const clerkConfigured = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const brand = getBrandVariant();
+// Only for the !clerkConfigured fallback below, which renders outside
+// ClerkProvider entirely (main.tsx doesn't mount it without a publishable
+// key) — useBrand() can't be called there since it needs useAuth() via
+// useExperiment/useAppUser. Every other brand-name render in this app goes
+// through useBrand() instead, which is experiment/override-aware.
+const fallbackBrand = getBrandVariant();
 
 // Only mounted when clerkConfigured, so useAppUser's useAuth() always has a
 // ClerkProvider ancestor — see main.tsx.
@@ -43,6 +49,7 @@ function HeaderAuthSlot() {
 // session, report, admin) — distinct from LandingPage, which is full-width
 // and renders its own header. Only used once a candidate is signed in.
 function AppShell({ children }: { children: ReactNode }) {
+  const brand = useBrand();
   return (
     <div className="app-shell">
       <OfflineBanner />
@@ -75,8 +82,8 @@ export default function App() {
       <div className="app-shell">
         <OfflineBanner />
         <header className="app-header">
-          <span className="brand">{brand.name}</span>
-          <span className="brand-sub">{brand.tagline}</span>
+          <span className="brand">{fallbackBrand.name}</span>
+          <span className="brand-sub">{fallbackBrand.tagline}</span>
         </header>
         <main>
           <div className="voice-blocked">

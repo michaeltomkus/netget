@@ -5,6 +5,7 @@ import cors from "cors";
 import { sessionsRouter } from "./routes/sessions.js";
 import { jobRolesRouter } from "./routes/jobRoles.js";
 import { experimentsRouter } from "./routes/experiments.js";
+import { brandRouter } from "./routes/brand.js";
 import { billingRouter } from "./routes/billing.js";
 import { stripeWebhookRouter } from "./routes/stripeWebhook.js";
 import { adminRouter } from "./routes/admin.js";
@@ -65,6 +66,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/sessions", sessionsRouter);
 app.use("/api/job-roles", jobRolesRouter);
 app.use("/api/experiments", experimentsRouter);
+app.use("/api/brand", brandRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/me", meRouter);

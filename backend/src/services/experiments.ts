@@ -23,6 +23,12 @@ export const EXPERIMENTS: ExperimentDefinition[] = [
     description: "Landing page hero headline + primary CTA copy — signed-out visitors.",
     variants: ["control", "direct"],
   },
+  {
+    key: "brand-identity",
+    description:
+      "The product's own name/tagline (site-wide header + landing footer) — see brand.config.json for the variants' copy. An admin can also force one variant for everyone from /admin, which overrides this experiment's per-visitor split without unregistering it — see services/brand.ts.",
+    variants: ["control", "alt"],
+  },
 ];
 
 export function getExperiment(key: string): ExperimentDefinition | undefined {

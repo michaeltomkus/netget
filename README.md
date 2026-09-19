@@ -309,41 +309,55 @@ pill radius scale, no-gradient rule) supplied as a design handoff doc.
   name (so the handful of call sites that reference it didn't need touching) but is
   now bound to a flat accent color, not a `linear-gradient(...)`.
 
-**Brand name & key verbiage — config-driven, not hardcoded**: the product name
-("InterviewAI"), its tagline, meta description, and footer copy all read from one
-file, `brand.config.json` at the repo root, instead of being typed inline anywhere.
-That's what makes A/B testing the brand itself (not just page copy) possible without
-a code change to every place the name appears.
+**Brand name & key verbiage — config-driven, A/B-tested, and admin-controllable**:
+the product name ("InterviewAI"), its tagline, meta description, and footer copy all
+read from one file, `brand.config.json` at the repo root, instead of being typed
+inline anywhere — and a second variant is now live behind a real experiment, with an
+admin override to force one variant for everyone.
 
 - **One JSON file, both workspaces.** `brand.config.json` is `{ defaultVariant,
-  variants: { control: { name, tagline, description, footerTagline } } }`. Both
-  `frontend/src/config/brand.ts` and `backend/src/config/brand.ts` read it and expose
-  the same `getBrandVariant(key?)` — the frontend as a normal Vite JSON import (Vite's
-  monorepo-aware dev server already serves files outside `frontend/`), the backend via
-  an `fs.readFileSync` at module load rather than a compile-time TS import, since
-  `tsconfig.json`'s `rootDir: "src"` would otherwise reject importing a file from
-  outside it. An unknown/missing variant key falls back to `defaultVariant` rather
-  than throwing.
-- **Every call site reads through it.** The header/footer brand name+tagline
-  (`App.tsx`, `LandingPage.tsx`), the error-boundary fallback message (`main.tsx`),
-  the hero copy's product-name mention, `index.html`'s `<title>`/meta
-  description/`apple-mobile-web-app-title` (resolved at build time by a small
+  variants: { control: {...}, alt: {...} } }` — each variant has `name`, `tagline`,
+  `description`, `footerTagline`. Both `frontend/src/config/brand.ts` and
+  `backend/src/config/brand.ts` read it and expose the same `getBrandVariant(key?)` —
+  the frontend as a normal Vite JSON import (Vite's monorepo-aware dev server already
+  serves files outside `frontend/`), the backend via an `fs.readFileSync` at module
+  load rather than a compile-time TS import, since `tsconfig.json`'s `rootDir: "src"`
+  would otherwise reject importing a file from outside it. An unknown/missing variant
+  key falls back to `defaultVariant` rather than throwing.
+- **A registered experiment, not just a static default.** `"brand-identity"` is a real
+  entry in both `services/experiments.ts` and `experiments/experiments.ts`, variants
+  `["control", "alt"]`. `frontend/src/hooks/useBrand.ts` is the one hook every
+  brand-name render goes through: it calls `useExperiment("brand-identity")` for the
+  visitor's deterministic per-visitor hash-assigned variant (same FNV-1a mechanism as
+  `landing-hero-copy`), then layers an admin override on top if one is set.
+- **Admin control, not just visibility.** `/admin`'s new "Brand identity" panel (above
+  the read-only A/B-experiments table, which shows this same experiment's live
+  exposure/conversion numbers regardless) lets an admin force one variant for every
+  visitor — e.g. to ship a winner without waiting to unregister the experiment — or
+  hand the decision back to the experiment's per-visitor split. The override is a
+  singleton `BrandOverride` DB row (`GET/POST /api/admin/brand[/override]`,
+  admin-only) and a public `GET /api/brand/override` the frontend polls once per page
+  load; both endpoints degrade to "no override" rather than crashing if the DB is
+  briefly unreachable — the same fix already applied to `routes/experiments.ts`
+  earlier, now applied proactively here (`services/brand.ts`'s
+  `getEffectiveBrandVariant()` never throws).
+- **Server-side rendering respects the override too.** Outgoing communications'
+  `{app_name}` merge field (see below) resolves through the same
+  `getEffectiveBrandVariant()`, so forcing a variant from `/admin` changes what
+  outbound email/SMS/push says, not just what the app shows.
+- **One disclosed tradeoff.** The override check is a network call, so on the very
+  first render — before it resolves — a visitor sees the experiment's natural
+  hash-assigned variant; if an override is active, the display then updates once that
+  fetch completes. Exposure logging always reflects the natural hash bucket
+  regardless of an active override, by design — that keeps "what would this visitor
+  have seen without the override" data available for whenever it's lifted.
+- **Build-time-only surfaces stay on the default variant.** `index.html`'s
+  `<title>`/meta description/`apple-mobile-web-app-title` (resolved by a small
   `transformIndexHtml` plugin in `vite.config.ts`, since static HTML can't import
-  JSON), the PWA manifest's `name`/`short_name`/`description`, the backend's startup
-  log line, and the `{app_name}` merge field in outgoing communications (see below)
-  all resolve from this one file now — grep the repo for `InterviewAI` as a literal
-  string and the only hits left are comments explaining this and test fixtures.
-- **Ready for a live brand A/B test, not already running one.** Only one variant
-  ("control", the app's actual current name/copy) ships today — a second brand name
-  wasn't invented here since that's a real content decision, not something to guess
-  at. To test one: add a second entry under `variants` in `brand.config.json`, then
-  wire selection through the same `useExperiment` hook the landing-page hero copy
-  already uses (register a `"brand-identity"` experiment in both
-  `services/experiments.ts` and `experiments/experiments.ts` with those variant keys,
-  call `getBrandVariant(variant)` with the hook's result instead of the no-argument
-  default). Deliberately not wired up preemptively — that would mean logging a
-  brand-identity exposure event on every single page render app-wide before there's
-  a second variant to actually test against.
+  JSON), the PWA manifest, and `main.tsx`'s error-boundary fallback can't be
+  per-visitor A/B tested in a client-rendered SPA with no per-request server
+  rendering — they intentionally always use `getBrandVariant()` with no argument
+  (the default), not `useBrand()`.
 
 **End-user communications**: an admin-facing way to compose and send templated,
 multi-channel, A/B-variant messages to end users — a distinct, explicitly requested

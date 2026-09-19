@@ -1,4 +1,5 @@
 import type {
+  AdminBrandConfig,
   AdminMetrics,
   AppUser,
   AudienceSelector,
@@ -240,5 +241,23 @@ export function sendCommunication(params: {
   return request<CommunicationSendSummary>("/api/admin/communications/send", {
     method: "POST",
     body: JSON.stringify(params),
+  });
+}
+
+// Public — read on every page load (see hooks/useBrand.ts), so this and
+// getAdminBrandConfig deliberately stay separate: this one never requires
+// auth even for a signed-out landing-page visitor.
+export function getBrandOverride() {
+  return request<{ overrideVariant: string | null }>("/api/brand/override");
+}
+
+export function getAdminBrandConfig() {
+  return request<AdminBrandConfig>("/api/admin/brand");
+}
+
+export function setAdminBrandOverride(variantKey: string | null) {
+  return request<{ overrideVariant: string | null }>("/api/admin/brand/override", {
+    method: "POST",
+    body: JSON.stringify({ variantKey }),
   });
 }

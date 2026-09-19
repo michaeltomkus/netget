@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { store } from "../../db/store.js";
 import { renderTemplate } from "./template.js";
 import { dispatchMessage, isChannelConfigured } from "./providers.js";
-import { getBrandVariant } from "../../config/brand.js";
+import { getEffectiveBrandVariant } from "../brand.js";
 import type {
   CommunicationChannel,
   CommunicationSendResult,
@@ -88,6 +88,10 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
   const recipients = await resolveAudience(params.audience);
   const batchId = uuidv4();
   const configured = isChannelConfigured(params.channel);
+  // Resolved once per batch, not per recipient — every message in one send
+  // uses whichever brand name is in effect right now (an admin override if
+  // set, else the default variant; see services/brand.ts).
+  const brandName = (await getEffectiveBrandVariant()).name;
 
   const outcomes = await Promise.all(
     recipients.map(async (user) => {
@@ -95,7 +99,7 @@ export async function sendCommunication(params: SendCommunicationParams): Promis
       const vars: Record<string, string> = {
         email: user.email,
         first_name: user.name?.split(" ")[0] ?? user.email.split("@")[0],
-        app_name: getBrandVariant().name,
+        app_name: brandName,
         ...params.extraVars,
       };
       const renderedSubject = template.subject ? renderTemplate(template.subject, vars) : undefined;

@@ -12,6 +12,11 @@
 // example of the whole-page-section case.
 export const EXPERIMENTS = {
   "landing-hero-copy": ["control", "direct"],
+  // The product's own name/tagline — see brand.config.json for each
+  // variant's copy and hooks/useBrand.ts for how this combines with an
+  // admin-set override (which wins over this experiment's per-visitor
+  // split when set, without needing to unregister the experiment).
+  "brand-identity": ["control", "alt"],
 } as const;
 
 export type ExperimentKey = keyof typeof EXPERIMENTS;

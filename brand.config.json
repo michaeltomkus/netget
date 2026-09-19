@@ -6,6 +6,12 @@
       "tagline": "mock interview practice",
       "description": "Self-practice mock interview tool: AI-generated questions, live voice answering, and graded feedback.",
       "footerTagline": "Mock interview practice that talks back."
+    },
+    "alt": {
+      "name": "PrepPilot",
+      "tagline": "interview prep, on repeat",
+      "description": "Practice interviews out loud against an AI that pushes back — then see exactly what to fix before the real thing.",
+      "footerTagline": "Practice makes prepared."
     }
   }
 }

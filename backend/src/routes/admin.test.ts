@@ -16,6 +16,8 @@ const getExperimentConversionCounts = vi.fn<(key: string) => Promise<{ variant: 
 const listCommunicationTemplates = vi.fn();
 const listCommunicationSends = vi.fn();
 const getCommunicationVariantCounts = vi.fn();
+const getBrandOverride = vi.fn<() => Promise<string | null>>();
+const setBrandOverride = vi.fn<(variantKey: string | null, updatedByUserId: string) => Promise<void>>();
 
 vi.mock("../db/store.js", () => ({
   countUsers: vi.fn().mockResolvedValue(0),
@@ -27,6 +29,8 @@ vi.mock("../db/store.js", () => ({
   listCommunicationTemplates: (...args: []) => listCommunicationTemplates(...args),
   listCommunicationSends: (...args: [number?]) => listCommunicationSends(...args),
   getCommunicationVariantCounts: (...args: [string, string]) => getCommunicationVariantCounts(...args),
+  getBrandOverride: (...args: []) => getBrandOverride(...args),
+  setBrandOverride: (...args: [string | null, string]) => setBrandOverride(...args),
 }));
 
 vi.mock("../services/stripe.js", () => ({
@@ -66,6 +70,8 @@ beforeEach(() => {
   listCommunicationTemplates.mockReset();
   listCommunicationSends.mockReset();
   getCommunicationVariantCounts.mockReset();
+  getBrandOverride.mockReset();
+  setBrandOverride.mockReset();
   seedCommunicationTemplates.mockReset();
   sendCommunication.mockReset();
   isChannelConfigured.mockReset().mockReturnValue(false);
@@ -214,6 +220,75 @@ describe("POST /api/admin/communications/send", () => {
     const res = await request(app)
       .post("/api/admin/communications/send")
       .send({ typeName: "Welcome", channel: "email", audience: { kind: "all" } });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/admin/brand", () => {
+  it("returns every configured variant plus the current override", async () => {
+    getBrandOverride.mockResolvedValue("alt");
+    const app = buildApp();
+    const res = await request(app).get("/api/admin/brand");
+
+    expect(res.status).toBe(200);
+    expect(res.body.overrideVariant).toBe("alt");
+    expect(res.body.variants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "control", name: "InterviewAI" }),
+        expect.objectContaining({ key: "alt", name: "PrepPilot" }),
+      ]),
+    );
+  });
+
+  it("returns overrideVariant: null rather than failing when the store call errors", async () => {
+    getBrandOverride.mockRejectedValue(new Error("Can't reach database server"));
+    const app = buildApp();
+    const res = await request(app).get("/api/admin/brand");
+    expect(res.status).toBe(200);
+    expect(res.body.overrideVariant).toBeNull();
+  });
+
+  it("404s for a non-admin", async () => {
+    currentUser = { ...currentUser, role: "user" as unknown as "admin" };
+    const res = await request(buildApp()).get("/api/admin/brand");
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /api/admin/brand/override", () => {
+  it("sets the override with the admin's own id and echoes it back", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/admin/brand/override").send({ variantKey: "alt" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ overrideVariant: "alt" });
+    expect(setBrandOverride).toHaveBeenCalledWith("alt", "admin_1");
+  });
+
+  it("clears the override with variantKey: null", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/admin/brand/override").send({ variantKey: null });
+    expect(res.status).toBe(200);
+    expect(setBrandOverride).toHaveBeenCalledWith(null, "admin_1");
+  });
+
+  it("400s on an unknown variant key", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/admin/brand/override").send({ variantKey: "not-a-real-variant" });
+    expect(res.status).toBe(400);
+    expect(setBrandOverride).not.toHaveBeenCalled();
+  });
+
+  it("502s when the store write fails", async () => {
+    setBrandOverride.mockRejectedValue(new Error("Can't reach database server"));
+    const app = buildApp();
+    const res = await request(app).post("/api/admin/brand/override").send({ variantKey: "alt" });
+    expect(res.status).toBe(502);
+  });
+
+  it("404s for a non-admin", async () => {
+    currentUser = { ...currentUser, role: "user" as unknown as "admin" };
+    const res = await request(buildApp()).post("/api/admin/brand/override").send({ variantKey: "alt" });
     expect(res.status).toBe(404);
   });
 });

@@ -408,3 +408,19 @@ model CommunicationSend {
   @@index([templateId, variant])
   @@index([batchId])
 }
+
+// --- Brand identity admin override ------------------------------------
+//
+// A singleton row (always id: "singleton") — an admin's manual override of
+// which brand.config.json variant is shown to everyone, taking precedence
+// over the "brand-identity" experiment's per-visitor hash split (see
+// services/brand.ts) without unregistering that experiment. `variantKey`
+// null means "no override, let the experiment decide" — the default,
+// steady-state row.
+model BrandOverride {
+  id              String   @id @default("singleton")
+  variantKey      String?
+  updatedAt       DateTime @updatedAt
+  /// The admin User.id who last changed this, for the audit trail — null only if never set.
+  updatedByUserId String?
+}
