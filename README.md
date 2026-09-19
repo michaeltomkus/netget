@@ -111,12 +111,37 @@ thorough answers take longer; the grading prompt is explicitly steered to
 judge whether the extra (or saved) time correlated with answer depth, not to
 score the raw time delta by itself.
 
+**Accounts, database, and billing** (post-Phase-6): sessions, questions,
+responses, grading results, users, and subscriptions now live in Postgres
+via Prisma (`backend/prisma/schema.prisma`), replacing the flat JSON file
+used through Phase 6. Sign-in is federated through
+[Clerk](https://clerk.com) (Google and whatever other providers are enabled
+in the Clerk dashboard) — this app never sees or stores a password. Every
+`/api/sessions`, `/api/billing`, `/api/admin`, and `/api/me` route requires
+sign-in; without `CLERK_SECRET_KEY` configured, those routes cleanly 503
+("Sign-in is not configured") rather than the app crashing, same
+graceful-degradation pattern as the voice providers. Subscription billing is
+handled entirely by [Stripe](https://stripe.com) Checkout and the Customer
+Portal (both hosted pages) — this app never sees or stores card data, only
+the resulting subscription id/status/price from Stripe webhooks. There's a
+free tier (3 sessions/calendar month by default, see
+`FREE_TIER_SESSIONS_PER_MONTH` in `backend/src/routes/billing.ts`); an
+active subscription lifts that limit. An admin dashboard at `/admin`
+(role granted via the `ADMIN_EMAILS` allowlist at first sign-in) shows
+revenue/usage metrics (MRR, active subscriber count, session volume) —
+deliberately metrics-only, with no manual comp/grant or cancel/refund
+actions, per the scope this was built to.
+
 ## Setup
 
 ```bash
 npm install
 cp .env.example .env   # then add your ANTHROPIC_API_KEY (required),
-                        # and AZURE_SPEECH_*/DEEPGRAM_API_KEY (optional, for voice)
+                        # AZURE_SPEECH_*/DEEPGRAM_API_KEY (optional, for voice),
+                        # DATABASE_URL (required — a running Postgres instance),
+                        # CLERK_SECRET_KEY/VITE_CLERK_PUBLISHABLE_KEY (required for sign-in),
+                        # and STRIPE_* (optional, for billing)
+cd backend && npx prisma migrate deploy   # applies the schema to DATABASE_URL
 ```
 
 ## Run (two terminals)
@@ -134,11 +159,12 @@ view the report card.
 ```
 backend/    Node/TypeScript/Express API. Question generation and grading
             both go through Claude via tool-use for structured output.
-            Storage is a flat JSON file (backend/data/db.json) for now —
-            see docs/ARCHITECTURE.md §2.4 for the intended swap to a real
-            store later.
-frontend/   React/TypeScript/Vite PWA-to-be. Three pages: schedule a
-            session, answer questions one at a time, view the report card.
+            Storage is Postgres via Prisma (backend/prisma/schema.prisma).
+            Auth is Clerk (backend/src/middleware/auth.ts), billing is
+            Stripe (backend/src/routes/billing.ts + stripeWebhook.ts).
+frontend/   React/TypeScript/Vite PWA. Schedule a session, answer questions
+            one at a time, view the report card, manage billing, and (for
+            admins) view revenue/usage metrics at /admin.
 docs/       ARCHITECTURE.md — the full system design and phased build plan.
 ```
 

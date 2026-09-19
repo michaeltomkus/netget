@@ -3,17 +3,37 @@ import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
 import { sessionsRouter } from "./routes/sessions.js";
+import { billingRouter } from "./routes/billing.js";
+import { stripeWebhookRouter } from "./routes/stripeWebhook.js";
+import { adminRouter } from "./routes/admin.js";
+import { meRouter } from "./routes/me.js";
 import { attachSttGateway } from "./gateway/sttGateway.js";
 import { MEDIA_DIR } from "./services/media.js";
+import { clerkAuth } from "./middleware/auth.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 
 app.use(cors({ origin: corsOrigin.split(",").map((o) => o.trim()) }));
+
+// Mounted before express.json(): Stripe's webhook signature is computed
+// over the exact raw request bytes, which JSON body-parsing would already
+// have consumed — see routes/stripeWebhook.ts.
+app.use("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookRouter);
+
 // 8mb: the presentation-data endpoint accepts a batch of ~8 base64-encoded
 // JPEG frames in one request (see routes/sessions.ts POST /:id/presentation).
 app.use(express.json({ limit: "8mb" }));
+// Verifies the Clerk session token (if any) on every request and attaches
+// req.auth. Unlike every other provider integration in this app,
+// clerkMiddleware() doesn't degrade gracefully on its own when unconfigured
+// — it throws on every request once mounted (getAuth() requires it to have
+// run) — so it's only mounted at all when a secret key is present; route-level
+// requireAuth() then 503s cleanly instead. See middleware/auth.ts.
+if (process.env.CLERK_SECRET_KEY) {
+  app.use(clerkAuth);
+}
 
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -21,10 +41,15 @@ app.get("/api/health", (_req, res) => {
     hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY),
     hasTts: Boolean(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION),
     hasStt: Boolean(process.env.DEEPGRAM_API_KEY),
+    hasAuth: Boolean(process.env.CLERK_SECRET_KEY),
+    hasBilling: Boolean(process.env.STRIPE_SECRET_KEY),
   });
 });
 
 app.use("/api/sessions", sessionsRouter);
+app.use("/api/billing", billingRouter);
+app.use("/api/admin", adminRouter);
+app.use("/api/me", meRouter);
 app.use("/media", express.static(MEDIA_DIR));
 
 const server = createServer(app);

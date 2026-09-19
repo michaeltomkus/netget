@@ -1,6 +1,8 @@
-import { Router } from "express";
+import { Router, type Request, type Response as ExpressResponse } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { store } from "../db/store.js";
+import * as store from "../db/store.js";
+import { requireAuth } from "../middleware/auth.js";
+import { checkFreeTierLimit } from "./billing.js";
 import { generateQuestionSet } from "../services/questionGeneration.js";
 import { runGradingPipeline } from "../services/grading/gradingPipeline.js";
 import { savePresentationFrames } from "../services/media.js";
@@ -15,6 +17,10 @@ import type {
 } from "../types.js";
 
 export const sessionsRouter = Router();
+
+// Every route below needs an authenticated, provisioned req.appUser — a
+// mock-interview session is personal data tied to one candidate.
+sessionsRouter.use(requireAuth());
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "staff", "exec"];
 const STRESS_LEVELS: StressIntensity[] = ["low", "medium", "high"];
@@ -32,8 +38,19 @@ function toCandidateFacingQuestion(q: Question) {
   };
 }
 
+// Loads a session and 404s (rather than 403s — avoids confirming to a caller
+// that a given session id exists at all) if it isn't owned by req.appUser.
+async function loadOwnedSession(req: Request, res: ExpressResponse): Promise<Session | undefined> {
+  const session = await store.getSession(req.params.id);
+  if (!session || session.userId !== req.appUser!.id) {
+    res.status(404).json({ error: "Session not found" });
+    return undefined;
+  }
+  return session;
+}
+
 sessionsRouter.post("/", async (req, res) => {
-  const { role, seniority, companyContext, stressIntensity, recordingConsent, scheduledDurationMinutes } =
+  const { role, seniority, companyContext, stressIntensity, scheduledDurationMinutes } =
     req.body ?? {};
 
   if (typeof role !== "string" || role.trim().length === 0) {
@@ -56,49 +73,58 @@ sessionsRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "scheduledDurationMinutes must be a number between 5 and 180" });
   }
 
-  const sessionId = uuidv4();
+  const limit = await checkFreeTierLimit(req.appUser!.id);
+  if (!limit.allowed) {
+    return res.status(402).json({
+      error: `Free tier limit reached (${limit.used}/${limit.limit} sessions this month). Subscribe to continue.`,
+      freeTier: limit,
+    });
+  }
+
+  const trimmedRole = role.trim();
+  const trimmedCompanyContext = typeof companyContext === "string" ? companyContext.trim() : undefined;
+
+  // The Session row is created first (status: in_progress) so the
+  // QuestionSet row generated below has something to carry its FK to;
+  // cleaned up on failure so a bad Claude call never leaves an orphaned,
+  // permanently-stuck-without-questions session behind.
+  const session = await store.createSession({
+    userId: req.appUser!.id,
+    role: trimmedRole,
+    seniority,
+    companyContext: trimmedCompanyContext,
+    stressIntensity,
+    scheduledDurationMinutes,
+  });
 
   try {
     const questionSet = await generateQuestionSet({
-      sessionId,
-      role: role.trim(),
+      sessionId: session.id,
+      role: trimmedRole,
       seniority,
-      companyContext: typeof companyContext === "string" ? companyContext.trim() : undefined,
+      companyContext: trimmedCompanyContext,
       stressIntensity,
     });
+    const updated = await store.updateSession(session.id, { questionSetId: questionSet.id });
+    const questions = await store.getQuestionsBySet(questionSet.id);
 
-    const session: Session = {
-      id: sessionId,
-      createdAt: new Date().toISOString(),
-      role: role.trim(),
-      seniority,
-      companyContext: typeof companyContext === "string" ? companyContext.trim() : undefined,
-      stressIntensity,
-      status: "in_progress",
-      questionSetId: questionSet.id,
-      scheduledDurationMinutes,
-      startedAt: new Date().toISOString(),
-      recordingConsent: recordingConsent === true,
-    };
-    store.saveSession(session);
-
-    const questions = store.getQuestionsBySet(questionSet.id);
     res.status(201).json({
-      session,
+      session: updated,
       questions: questions.map(toCandidateFacingQuestion),
     });
   } catch (err) {
     console.error("Failed to create session:", err);
+    await store.deleteSession(session.id);
     res.status(502).json({ error: "Failed to generate question set", detail: String(err) });
   }
 });
 
-sessionsRouter.get("/:id", (req, res) => {
-  const session = store.getSession(req.params.id);
-  if (!session) return res.status(404).json({ error: "Session not found" });
+sessionsRouter.get("/:id", async (req, res) => {
+  const session = await loadOwnedSession(req, res);
+  if (!session) return;
 
-  const questions = store.getQuestionsBySet(session.questionSetId);
-  const responses = store.getResponsesBySession(session.id);
+  const questions = session.questionSetId ? await store.getQuestionsBySet(session.questionSetId) : [];
+  const responses = await store.getResponsesBySession(session.id);
 
   res.json({
     session,
@@ -107,15 +133,15 @@ sessionsRouter.get("/:id", (req, res) => {
   });
 });
 
-sessionsRouter.post("/:id/responses", (req, res) => {
-  const session = store.getSession(req.params.id);
-  if (!session) return res.status(404).json({ error: "Session not found" });
+sessionsRouter.post("/:id/responses", async (req, res) => {
+  const session = await loadOwnedSession(req, res);
+  if (!session) return;
 
   const { questionId, transcript, dynamicFollowUps } = req.body ?? {};
   if (typeof questionId !== "string" || typeof transcript !== "string") {
     return res.status(400).json({ error: "questionId and transcript are required" });
   }
-  const question = store.getQuestion(questionId);
+  const question = await store.getQuestion(questionId);
   if (!question || question.questionSetId !== session.questionSetId) {
     return res.status(400).json({ error: "questionId does not belong to this session" });
   }
@@ -141,7 +167,7 @@ sessionsRouter.post("/:id/responses", (req, res) => {
     createdAt: new Date().toISOString(),
     dynamicFollowUps: validatedFollowUps,
   };
-  store.saveResponse(response);
+  await store.saveResponse(response);
 
   res.status(201).json({ response });
 });
@@ -153,9 +179,9 @@ const MAX_FRAMES = 10;
 // Requires recordingConsent on the session (defense in depth: the frontend
 // already gates camera access behind consent, this just refuses to store
 // frames for a session that never opted in).
-sessionsRouter.post("/:id/presentation", (req, res) => {
-  const session = store.getSession(req.params.id);
-  if (!session) return res.status(404).json({ error: "Session not found" });
+sessionsRouter.post("/:id/presentation", async (req, res) => {
+  const session = await loadOwnedSession(req, res);
+  if (!session) return;
   if (!session.recordingConsent) {
     return res.status(403).json({ error: "Session does not have recording consent" });
   }
@@ -193,8 +219,7 @@ sessionsRouter.post("/:id/presentation", (req, res) => {
     avgBrightness: signals.avgBrightness,
   };
 
-  store.saveSession({
-    ...session,
+  await store.updateSession(session.id, {
     presentationFrameRefs: frameRefs,
     presentationSignals,
   });
@@ -203,11 +228,11 @@ sessionsRouter.post("/:id/presentation", (req, res) => {
 });
 
 sessionsRouter.post("/:id/grade", async (req, res) => {
-  const session = store.getSession(req.params.id);
-  if (!session) return res.status(404).json({ error: "Session not found" });
+  const session = await loadOwnedSession(req, res);
+  if (!session) return;
 
   try {
-    const existing = store.getGradingResultBySession(session.id);
+    const existing = await store.getGradingResultBySession(session.id);
     if (existing) return res.json({ result: existing });
 
     const result = await runGradingPipeline(session.id);
@@ -218,15 +243,15 @@ sessionsRouter.post("/:id/grade", async (req, res) => {
   }
 });
 
-sessionsRouter.get("/:id/report", (req, res) => {
-  const session = store.getSession(req.params.id);
-  if (!session) return res.status(404).json({ error: "Session not found" });
+sessionsRouter.get("/:id/report", async (req, res) => {
+  const session = await loadOwnedSession(req, res);
+  if (!session) return;
 
-  const result = store.getGradingResultBySession(session.id);
+  const result = await store.getGradingResultBySession(session.id);
   if (!result) return res.status(404).json({ error: "Session has not been graded yet" });
 
-  const questions = store.getQuestionsBySet(session.questionSetId);
-  const responses = store.getResponsesBySession(session.id);
+  const questions = session.questionSetId ? await store.getQuestionsBySet(session.questionSetId) : [];
+  const responses = await store.getResponsesBySession(session.id);
 
   res.json({ session, questions: questions.map(toCandidateFacingQuestion), responses, result });
 });

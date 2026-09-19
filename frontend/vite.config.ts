@@ -43,4 +43,7 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  // README's setup step is `cp .env.example .env` at the repo root, not
+  // per-workspace — read VITE_* vars from there instead of frontend/.env.
+  envDir: "../",
 });

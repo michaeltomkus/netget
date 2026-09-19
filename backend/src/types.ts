@@ -14,15 +14,52 @@ export type SessionStatus =
 export type QuestionType = "behavioral" | "technical" | "out_of_box" | "stress";
 export type ExpectedStructure = "STAR" | "technical_walkthrough" | "open_ended";
 
+export type Role = "user" | "admin";
+
+export interface User {
+  id: string;
+  /** Clerk's user id — the source of truth for identity; we never store a password or token ourselves. */
+  clerkUserId: string;
+  email: string;
+  name?: string;
+  role: Role;
+  stripeCustomerId?: string;
+  createdAt: string;
+}
+
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "unpaid"
+  | "paused";
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: SubscriptionStatus;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Session {
   id: string;
+  userId: string;
   createdAt: string;
   role: string;
   seniority: Seniority;
   companyContext?: string;
   stressIntensity: StressIntensity;
   status: SessionStatus;
-  questionSetId: string;
+  /** Set once question generation completes; absent only in the brief window during session creation. */
+  questionSetId?: string;
   /** Candidate-chosen target length for the whole session, set at schedule time. */
   scheduledDurationMinutes: number;
   startedAt?: string;
@@ -67,7 +104,6 @@ export interface Question {
 export interface QuestionSet {
   id: string;
   sessionId: string;
-  questionIds: string[];
 }
 
 export interface DynamicFollowUp {

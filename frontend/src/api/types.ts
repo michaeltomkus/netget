@@ -92,3 +92,33 @@ export interface GradingResult {
   topStrengths: string[];
   topGrowthAreas: string[];
 }
+
+export interface Subscription {
+  id: string;
+  stripeSubscriptionId: string;
+  status: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface BillingStatus {
+  stripeConfigured: boolean;
+  subscription?: Subscription;
+  freeTier: { used: number; limit: number };
+}
+
+export interface AppUser {
+  id: string;
+  email: string;
+  name?: string;
+  role: "user" | "admin";
+}
+
+export interface AdminMetrics {
+  totalUsers: number;
+  activeSubscriberCount: number;
+  freeUserCount: number;
+  sessionsThisMonth: number;
+  sessionsAllTime: number;
+  mrrCents?: number;
+}

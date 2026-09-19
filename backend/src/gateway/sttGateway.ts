@@ -3,12 +3,15 @@ import { WebSocketServer, WebSocket } from "ws";
 import { DeepgramStt } from "../services/stt/deepgramStt.js";
 import type { SttStream } from "../services/stt/ISpeechToText.js";
 import { StressTrigger } from "../services/stress/interviewConductor.js";
-import { store } from "../db/store.js";
+import { verifyWsToken } from "../middleware/auth.js";
+import * as store from "../db/store.js";
 
 interface ClientMessage {
   type: "start" | "stop";
   sessionId?: string;
   questionId?: string;
+  /** Short-lived Clerk session token — see middleware/auth.ts verifyWsToken for why this can't just ride on cookies/headers here. */
+  token?: string;
 }
 
 // The Interview Conductor lives here: this gateway is still primarily an
@@ -35,49 +38,7 @@ export function attachSttGateway(server: Server): void {
         }
 
         if (msg.type === "start" && !started) {
-          const session = msg.sessionId ? store.getSession(msg.sessionId) : undefined;
-          if (!session) {
-            ws.send(JSON.stringify({ type: "error", message: "Unknown session" }));
-            ws.close();
-            return;
-          }
-
-          const question = msg.questionId ? store.getQuestion(msg.questionId) : undefined;
-          if (question && question.questionSetId === session.questionSetId) {
-            stressTrigger = new StressTrigger(session, question);
-          }
-
-          try {
-            sttStream = new DeepgramStt().openStream(
-              (event) => {
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify({ type: "transcript", ...event }));
-                }
-                if (event.isFinal) {
-                  finalTranscript = finalTranscript ? `${finalTranscript} ${event.text}` : event.text;
-                  stressTrigger?.onFinalSegment(event.text, finalTranscript).then((payload) => {
-                    if (payload && ws.readyState === WebSocket.OPEN) {
-                      ws.send(JSON.stringify({ type: "interrupt", ...payload }));
-                    }
-                  });
-                }
-              },
-              (err) => {
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify({ type: "error", message: err.message }));
-                }
-              },
-            );
-            started = true;
-          } catch (err) {
-            ws.send(
-              JSON.stringify({
-                type: "error",
-                message: err instanceof Error ? err.message : "STT is not configured",
-              }),
-            );
-            ws.close();
-          }
+          void handleStart(msg);
         } else if (msg.type === "stop") {
           sttStream?.close();
           ws.close();
@@ -90,6 +51,64 @@ export function attachSttGateway(server: Server): void {
         sttStream.sendAudio(buf);
       }
     });
+
+    async function handleStart(msg: ClientMessage) {
+      if (!msg.token) {
+        ws.send(JSON.stringify({ type: "error", message: "Sign in required" }));
+        ws.close();
+        return;
+      }
+      const user = await verifyWsToken(msg.token);
+      if (!user) {
+        ws.send(JSON.stringify({ type: "error", message: "Sign in required" }));
+        ws.close();
+        return;
+      }
+
+      const session = msg.sessionId ? await store.getSession(msg.sessionId) : undefined;
+      if (!session || session.userId !== user.id) {
+        ws.send(JSON.stringify({ type: "error", message: "Unknown session" }));
+        ws.close();
+        return;
+      }
+
+      const question = msg.questionId ? await store.getQuestion(msg.questionId) : undefined;
+      if (question && question.questionSetId === session.questionSetId) {
+        stressTrigger = new StressTrigger(session, question);
+      }
+
+      try {
+        sttStream = new DeepgramStt().openStream(
+          (event) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "transcript", ...event }));
+            }
+            if (event.isFinal) {
+              finalTranscript = finalTranscript ? `${finalTranscript} ${event.text}` : event.text;
+              stressTrigger?.onFinalSegment(event.text, finalTranscript).then((payload) => {
+                if (payload && ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ type: "interrupt", ...payload }));
+                }
+              });
+            }
+          },
+          (err) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "error", message: err.message }));
+            }
+          },
+        );
+        started = true;
+      } catch (err) {
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            message: err instanceof Error ? err.message : "STT is not configured",
+          }),
+        );
+        ws.close();
+      }
+    }
 
     ws.on("close", () => {
       sttStream?.close();

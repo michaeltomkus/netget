@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { store } from "../../db/store.js";
+import * as store from "../../db/store.js";
 import { deletePresentationFrames } from "../media.js";
 import type { ComposureGrade, GradingResult, PresentationGrade, Question } from "../../types.js";
 import { gradeResponse } from "./contentGrading.js";
@@ -11,11 +11,12 @@ import { synthesizeSessionSummary } from "./sessionSummary.js";
 // queue (per docs/ARCHITECTURE.md §1.2 step 9) once sessions include
 // audio/video and grading calls get heavier (presentation, composure).
 export async function runGradingPipeline(sessionId: string): Promise<GradingResult> {
-  const session = store.getSession(sessionId);
+  const session = await store.getSession(sessionId);
   if (!session) throw new Error(`Session ${sessionId} not found`);
+  if (!session.questionSetId) throw new Error(`Session ${sessionId} has no question set yet`);
 
-  const questions = store.getQuestionsBySet(session.questionSetId);
-  const responses = store.getResponsesBySession(sessionId);
+  const questions = await store.getQuestionsBySet(session.questionSetId);
+  const responses = await store.getResponsesBySession(sessionId);
 
   if (responses.length === 0) {
     throw new Error("Cannot grade a session with no responses");
@@ -95,12 +96,11 @@ export async function runGradingPipeline(sessionId: string): Promise<GradingResu
     ...summaryRest,
   };
 
-  store.saveGradingResult(result);
-  store.saveSession({
-    ...session,
+  await store.saveGradingResult(result);
+  await store.updateSession(sessionId, {
     status: "graded",
     endedAt: now.toISOString(),
-    presentationFrameRefs: undefined,
+    presentationFrameRefs: null,
   });
 
   return result;

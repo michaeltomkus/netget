@@ -1,4 +1,7 @@
 import type {
+  AdminMetrics,
+  AppUser,
+  BillingStatus,
   CandidateQuestion,
   DynamicFollowUp,
   GradingResult,
@@ -8,15 +11,20 @@ import type {
   Session,
   StressIntensity,
 } from "./types";
+import { getAuthToken } from "../auth/tokenBridge";
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
 export const WS_BASE = API_BASE.replace(/^http/, "ws");
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      headers: { "Content-Type": "application/json" },
+      headers,
       ...init,
     });
   } catch {
@@ -83,6 +91,26 @@ export function gradeSession(sessionId: string) {
   return request<{ result: GradingResult }>(`/api/sessions/${sessionId}/grade`, {
     method: "POST",
   });
+}
+
+export function getMe() {
+  return request<{ user: AppUser }>("/api/me");
+}
+
+export function getAdminMetrics() {
+  return request<AdminMetrics>("/api/admin/metrics");
+}
+
+export function getBillingStatus() {
+  return request<BillingStatus>("/api/billing/status");
+}
+
+export function startCheckout() {
+  return request<{ url: string }>("/api/billing/checkout", { method: "POST" });
+}
+
+export function openBillingPortal() {
+  return request<{ url: string }>("/api/billing/portal", { method: "POST" });
 }
 
 export function getReport(sessionId: string) {

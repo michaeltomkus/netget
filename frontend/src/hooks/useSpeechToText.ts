@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WS_BASE } from "../api/client";
 import { iosStandaloneHint } from "../utils/platform";
+import { getAuthToken } from "../auth/tokenBridge";
 
 export type SttStatus = "idle" | "connecting" | "recording" | "stopped" | "error";
 
@@ -106,11 +107,24 @@ export function useSpeechToText(
     }
     streamRef.current = stream;
 
+    // Fetched before opening the socket, not inside onopen: the WS upgrade
+    // bypasses Express's auth middleware entirely (see backend
+    // gateway/sttGateway.ts), so the token has to ride in the "start"
+    // message payload instead of a header.
+    const token = await getAuthToken();
+    if (!token) {
+      setError("Sign in required.");
+      setStatus("error");
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      return;
+    }
+
     const ws = new WebSocket(`${WS_BASE}/ws/stt`);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "start", sessionId, questionId }));
+      ws.send(JSON.stringify({ type: "start", sessionId, questionId, token }));
 
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;

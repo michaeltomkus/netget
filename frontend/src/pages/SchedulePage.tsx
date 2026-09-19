@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSession } from "../api/client";
 import type { Seniority, StressIntensity } from "../api/types";
+import BillingPanel from "../components/BillingPanel";
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "staff", "exec"];
 const STRESS_LEVELS: StressIntensity[] = ["low", "medium", "high"];
@@ -41,6 +42,7 @@ export default function SchedulePage() {
 
   return (
     <div className="card">
+      <BillingPanel />
       <h1>Schedule a mock interview</h1>
       <p className="muted">
         Pick the role and seniority you're targeting. Questions — including a couple of

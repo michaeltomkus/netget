@@ -1,109 +1,475 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { Prisma } from "@prisma/client";
+import { prisma } from "./prisma.js";
 import type {
   Session,
   QuestionSet,
   Question,
   Response,
   GradingResult,
+  User,
+  Subscription,
+  PresentationSignals,
+  DynamicFollowUp,
+  PerQuestionGrade,
+  PresentationGrade,
+  ComposureGrade,
+  TimeManagement,
 } from "../types.js";
 
-// Phase 1 storage: a flat JSON file, loaded into memory on boot and rewritten
-// on every mutation. This stands in for the IStorage interface described in
-// docs/ARCHITECTURE.md §2.4 — swap this module for a real Blob/DB-backed
-// implementation later without touching callers, which only ever import the
-// exported functions below.
+// Prisma-backed store, replacing the flat-JSON-file version used through
+// Phase 6. Function names/shapes are kept close to the original so callers
+// mostly just gained `await` — see git history for the JSON-file version if
+// useful context. All functions are async now; Dates are converted to ISO
+// strings and Json columns are cast to their app-level TS shape at the
+// boundary, same pragmatic looseness (no runtime schema validation) as the
+// original store had.
 
-interface Db {
-  sessions: Record<string, Session>;
-  questionSets: Record<string, QuestionSet>;
-  questions: Record<string, Question>;
-  responses: Record<string, Response>;
-  gradingResults: Record<string, GradingResult>;
+function toIso(d: Date | null | undefined): string | undefined {
+  return d ? d.toISOString() : undefined;
 }
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, "..", "..", "data");
-const DB_PATH = join(DATA_DIR, "db.json");
+// ---- Users ----
 
-function emptyDb(): Db {
+function mapUser(row: {
+  id: string;
+  clerkUserId: string;
+  email: string;
+  name: string | null;
+  role: string;
+  stripeCustomerId: string | null;
+  createdAt: Date;
+}): User {
   return {
-    sessions: {},
-    questionSets: {},
-    questions: {},
-    responses: {},
-    gradingResults: {},
+    id: row.id,
+    clerkUserId: row.clerkUserId,
+    email: row.email,
+    name: row.name ?? undefined,
+    role: row.role as User["role"],
+    stripeCustomerId: row.stripeCustomerId ?? undefined,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 
-function load(): Db {
-  if (!existsSync(DB_PATH)) return emptyDb();
-  try {
-    const raw = readFileSync(DB_PATH, "utf-8");
-    return { ...emptyDb(), ...JSON.parse(raw) };
-  } catch {
-    return emptyDb();
-  }
+export async function upsertUserFromClerk(params: {
+  clerkUserId: string;
+  email: string;
+  name?: string;
+  /** If the email matches ADMIN_EMAILS, the caller passes role: "admin" so it sticks on first provisioning. */
+  role?: User["role"];
+}): Promise<User> {
+  const row = await prisma.user.upsert({
+    where: { clerkUserId: params.clerkUserId },
+    update: { email: params.email, name: params.name },
+    create: {
+      clerkUserId: params.clerkUserId,
+      email: params.email,
+      name: params.name,
+      role: params.role ?? "user",
+    },
+  });
+  return mapUser(row);
 }
 
-const db: Db = load();
-
-function persist(): void {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+export async function getUserById(id: string): Promise<User | undefined> {
+  const row = await prisma.user.findUnique({ where: { id } });
+  return row ? mapUser(row) : undefined;
 }
 
+export async function getUserByClerkId(clerkUserId: string): Promise<User | undefined> {
+  const row = await prisma.user.findUnique({ where: { clerkUserId } });
+  return row ? mapUser(row) : undefined;
+}
+
+export async function setUserStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { stripeCustomerId } });
+}
+
+export async function getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
+  const row = await prisma.user.findUnique({ where: { stripeCustomerId } });
+  return row ? mapUser(row) : undefined;
+}
+
+export async function listUsers(): Promise<User[]> {
+  const rows = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+  return rows.map(mapUser);
+}
+
+export async function countUsers(): Promise<number> {
+  return prisma.user.count();
+}
+
+// ---- Subscriptions ----
+
+function mapSubscription(row: {
+  id: string;
+  userId: string;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: string;
+  currentPeriodEnd: Date;
+  cancelAtPeriodEnd: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}): Subscription {
+  return {
+    id: row.id,
+    userId: row.userId,
+    stripeSubscriptionId: row.stripeSubscriptionId,
+    stripePriceId: row.stripePriceId,
+    status: row.status as Subscription["status"],
+    currentPeriodEnd: row.currentPeriodEnd.toISOString(),
+    cancelAtPeriodEnd: row.cancelAtPeriodEnd,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export async function upsertSubscriptionByStripeId(params: {
+  userId: string;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: Subscription["status"];
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+}): Promise<Subscription> {
+  const row = await prisma.subscription.upsert({
+    where: { stripeSubscriptionId: params.stripeSubscriptionId },
+    update: {
+      status: params.status,
+      stripePriceId: params.stripePriceId,
+      currentPeriodEnd: new Date(params.currentPeriodEnd),
+      cancelAtPeriodEnd: params.cancelAtPeriodEnd,
+    },
+    create: {
+      userId: params.userId,
+      stripeSubscriptionId: params.stripeSubscriptionId,
+      stripePriceId: params.stripePriceId,
+      status: params.status,
+      currentPeriodEnd: new Date(params.currentPeriodEnd),
+      cancelAtPeriodEnd: params.cancelAtPeriodEnd,
+    },
+  });
+  return mapSubscription(row);
+}
+
+const ACTIVE_STATUSES: Subscription["status"][] = ["trialing", "active", "past_due"];
+
+export async function getActiveSubscriptionForUser(userId: string): Promise<Subscription | undefined> {
+  const row = await prisma.subscription.findFirst({
+    where: { userId, status: { in: ACTIVE_STATUSES } },
+    orderBy: { createdAt: "desc" },
+  });
+  return row ? mapSubscription(row) : undefined;
+}
+
+export async function listActiveSubscriptions(): Promise<Subscription[]> {
+  const rows = await prisma.subscription.findMany({
+    where: { status: { in: ACTIVE_STATUSES } },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(mapSubscription);
+}
+
+// ---- Sessions ----
+
+function mapSession(row: {
+  id: string;
+  userId: string;
+  createdAt: Date;
+  role: string;
+  seniority: string;
+  companyContext: string | null;
+  stressIntensity: string;
+  status: string;
+  questionSetId: string | null;
+  scheduledDurationMinutes: number;
+  startedAt: Date | null;
+  endedAt: Date | null;
+  recordingConsent: boolean;
+  presentationFrameRefs: string[];
+  presentationSignals: unknown;
+}): Session {
+  return {
+    id: row.id,
+    userId: row.userId,
+    createdAt: row.createdAt.toISOString(),
+    role: row.role,
+    seniority: row.seniority as Session["seniority"],
+    companyContext: row.companyContext ?? undefined,
+    stressIntensity: row.stressIntensity as Session["stressIntensity"],
+    status: row.status as Session["status"],
+    questionSetId: row.questionSetId ?? undefined,
+    scheduledDurationMinutes: row.scheduledDurationMinutes,
+    startedAt: toIso(row.startedAt),
+    endedAt: toIso(row.endedAt),
+    recordingConsent: row.recordingConsent,
+    presentationFrameRefs: row.presentationFrameRefs.length ? row.presentationFrameRefs : undefined,
+    presentationSignals: (row.presentationSignals as PresentationSignals | null) ?? undefined,
+  };
+}
+
+export async function createSession(params: {
+  userId: string;
+  role: string;
+  seniority: Session["seniority"];
+  companyContext?: string;
+  stressIntensity: Session["stressIntensity"];
+  scheduledDurationMinutes: number;
+}): Promise<Session> {
+  const row = await prisma.session.create({
+    data: {
+      userId: params.userId,
+      role: params.role,
+      seniority: params.seniority,
+      companyContext: params.companyContext,
+      stressIntensity: params.stressIntensity,
+      status: "in_progress",
+      scheduledDurationMinutes: params.scheduledDurationMinutes,
+      startedAt: new Date(),
+      recordingConsent: false,
+    },
+  });
+  return mapSession(row);
+}
+
+export async function getSession(id: string): Promise<Session | undefined> {
+  const row = await prisma.session.findUnique({ where: { id } });
+  return row ? mapSession(row) : undefined;
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  // Compensating cleanup for a session that failed question generation right
+  // after creation — see routes/sessions.ts. Cascades are not configured in
+  // the schema (deliberately — losing a graded session by accident is worse
+  // than a rare orphaned row), so related rows are removed explicitly here;
+  // at this point in the flow none exist yet in practice.
+  await prisma.session.delete({ where: { id } }).catch(() => {});
+}
+
+export async function updateSession(
+  id: string,
+  data: Partial<{
+    status: Session["status"];
+    questionSetId: string;
+    endedAt: string;
+    recordingConsent: boolean;
+    presentationFrameRefs: string[] | null;
+    presentationSignals: PresentationSignals | null;
+  }>,
+): Promise<Session> {
+  const row = await prisma.session.update({
+    where: { id },
+    data: {
+      status: data.status,
+      questionSetId: data.questionSetId,
+      endedAt: data.endedAt ? new Date(data.endedAt) : undefined,
+      recordingConsent: data.recordingConsent,
+      presentationFrameRefs:
+        data.presentationFrameRefs === undefined
+          ? undefined
+          : (data.presentationFrameRefs ?? []),
+      presentationSignals:
+        data.presentationSignals === undefined
+          ? undefined
+          : data.presentationSignals === null
+            ? Prisma.JsonNull
+            : (data.presentationSignals as object),
+    },
+  });
+  return mapSession(row);
+}
+
+/** Sessions created by this user since the given date — used for free-tier usage counting. */
+export async function countSessionsSince(userId: string, since: Date): Promise<number> {
+  return prisma.session.count({ where: { userId, createdAt: { gte: since } } });
+}
+
+export async function countAllSessions(): Promise<number> {
+  return prisma.session.count();
+}
+
+export async function countSessionsSinceAllUsers(since: Date): Promise<number> {
+  return prisma.session.count({ where: { createdAt: { gte: since } } });
+}
+
+// ---- Question sets & questions ----
+
+export async function createQuestionSet(sessionId: string): Promise<QuestionSet> {
+  const row = await prisma.questionSet.create({ data: { sessionId } });
+  return { id: row.id, sessionId: row.sessionId };
+}
+
+function mapQuestion(row: {
+  id: string;
+  questionSetId: string;
+  order: number;
+  type: string;
+  text: string;
+  idealAnswerCriteria: string;
+  expectedStructure: string | null;
+  followUpTriggers: string[];
+  ttsAudioBlobRef: string | null;
+}): Question {
+  return {
+    id: row.id,
+    questionSetId: row.questionSetId,
+    order: row.order,
+    type: row.type as Question["type"],
+    text: row.text,
+    idealAnswerCriteria: row.idealAnswerCriteria,
+    expectedStructure: (row.expectedStructure as Question["expectedStructure"]) ?? undefined,
+    followUpTriggers: row.followUpTriggers.length ? row.followUpTriggers : undefined,
+    ttsAudioBlobRef: row.ttsAudioBlobRef ?? undefined,
+  };
+}
+
+export async function saveQuestion(question: Question): Promise<void> {
+  await prisma.question.upsert({
+    where: { id: question.id },
+    update: { ttsAudioBlobRef: question.ttsAudioBlobRef },
+    create: {
+      id: question.id,
+      questionSetId: question.questionSetId,
+      order: question.order,
+      type: question.type,
+      text: question.text,
+      idealAnswerCriteria: question.idealAnswerCriteria,
+      expectedStructure: question.expectedStructure,
+      followUpTriggers: question.followUpTriggers ?? [],
+      ttsAudioBlobRef: question.ttsAudioBlobRef,
+    },
+  });
+}
+
+export async function getQuestion(id: string): Promise<Question | undefined> {
+  const row = await prisma.question.findUnique({ where: { id } });
+  return row ? mapQuestion(row) : undefined;
+}
+
+export async function getQuestionsBySet(questionSetId: string): Promise<Question[]> {
+  const rows = await prisma.question.findMany({
+    where: { questionSetId },
+    orderBy: { order: "asc" },
+  });
+  return rows.map(mapQuestion);
+}
+
+// ---- Responses ----
+
+function mapResponse(row: {
+  id: string;
+  sessionId: string;
+  questionId: string;
+  transcript: string;
+  createdAt: Date;
+  dynamicFollowUps: unknown;
+}): Response {
+  return {
+    id: row.id,
+    sessionId: row.sessionId,
+    questionId: row.questionId,
+    transcript: row.transcript,
+    createdAt: row.createdAt.toISOString(),
+    dynamicFollowUps: (row.dynamicFollowUps as DynamicFollowUp[] | null) ?? undefined,
+  };
+}
+
+export async function saveResponse(response: Response): Promise<void> {
+  await prisma.response.create({
+    data: {
+      id: response.id,
+      sessionId: response.sessionId,
+      questionId: response.questionId,
+      transcript: response.transcript,
+      dynamicFollowUps: (response.dynamicFollowUps as object[] | undefined) ?? undefined,
+    },
+  });
+}
+
+export async function getResponsesBySession(sessionId: string): Promise<Response[]> {
+  const rows = await prisma.response.findMany({ where: { sessionId } });
+  return rows.map(mapResponse);
+}
+
+// ---- Grading results ----
+
+function mapGradingResult(row: {
+  id: string;
+  sessionId: string;
+  generatedAt: Date;
+  perQuestion: unknown;
+  presentation: unknown;
+  composureUnderStress: unknown;
+  timeManagement: unknown;
+  overallScore: number;
+  overallSummary: string;
+  topStrengths: string[];
+  topGrowthAreas: string[];
+}): GradingResult {
+  return {
+    id: row.id,
+    sessionId: row.sessionId,
+    generatedAt: row.generatedAt.toISOString(),
+    perQuestion: row.perQuestion as PerQuestionGrade[],
+    presentation: (row.presentation as PresentationGrade | null) ?? undefined,
+    composureUnderStress: (row.composureUnderStress as ComposureGrade | null) ?? undefined,
+    timeManagement: row.timeManagement as TimeManagement,
+    overallScore: row.overallScore,
+    overallSummary: row.overallSummary,
+    topStrengths: row.topStrengths,
+    topGrowthAreas: row.topGrowthAreas,
+  };
+}
+
+export async function saveGradingResult(result: GradingResult): Promise<void> {
+  await prisma.gradingResult.create({
+    data: {
+      id: result.id,
+      sessionId: result.sessionId,
+      generatedAt: new Date(result.generatedAt),
+      perQuestion: result.perQuestion as unknown as object,
+      presentation: (result.presentation as unknown as object) ?? undefined,
+      composureUnderStress: (result.composureUnderStress as unknown as object) ?? undefined,
+      timeManagement: result.timeManagement as unknown as object,
+      overallScore: result.overallScore,
+      overallSummary: result.overallSummary,
+      topStrengths: result.topStrengths,
+      topGrowthAreas: result.topGrowthAreas,
+    },
+  });
+}
+
+export async function getGradingResultBySession(sessionId: string): Promise<GradingResult | undefined> {
+  const row = await prisma.gradingResult.findUnique({ where: { sessionId } });
+  return row ? mapGradingResult(row) : undefined;
+}
+
+// Kept as a namespace object too, for call sites that prefer `store.method()`
+// over named imports — both work identically.
 export const store = {
-  saveSession(session: Session): void {
-    db.sessions[session.id] = session;
-    persist();
-  },
-  getSession(id: string): Session | undefined {
-    return db.sessions[id];
-  },
-
-  saveQuestionSet(set: QuestionSet): void {
-    db.questionSets[set.id] = set;
-    persist();
-  },
-  getQuestionSet(id: string): QuestionSet | undefined {
-    return db.questionSets[id];
-  },
-
-  saveQuestion(question: Question): void {
-    db.questions[question.id] = question;
-    persist();
-  },
-  getQuestion(id: string): Question | undefined {
-    return db.questions[id];
-  },
-  getQuestionsBySet(questionSetId: string): Question[] {
-    const set = db.questionSets[questionSetId];
-    if (!set) return [];
-    return set.questionIds
-      .map((id) => db.questions[id])
-      .filter((q): q is Question => Boolean(q))
-      .sort((a, b) => a.order - b.order);
-  },
-
-  saveResponse(response: Response): void {
-    db.responses[response.id] = response;
-    persist();
-  },
-  getResponsesBySession(sessionId: string): Response[] {
-    return Object.values(db.responses).filter(
-      (r) => r.sessionId === sessionId,
-    );
-  },
-
-  saveGradingResult(result: GradingResult): void {
-    db.gradingResults[result.id] = result;
-    persist();
-  },
-  getGradingResultBySession(sessionId: string): GradingResult | undefined {
-    return Object.values(db.gradingResults).find(
-      (g) => g.sessionId === sessionId,
-    );
-  },
+  upsertUserFromClerk,
+  getUserById,
+  getUserByClerkId,
+  setUserStripeCustomerId,
+  getUserByStripeCustomerId,
+  listUsers,
+  countUsers,
+  upsertSubscriptionByStripeId,
+  getActiveSubscriptionForUser,
+  listActiveSubscriptions,
+  createSession,
+  getSession,
+  deleteSession,
+  updateSession,
+  countSessionsSince,
+  countAllSessions,
+  countSessionsSinceAllUsers,
+  createQuestionSet,
+  saveQuestion,
+  getQuestion,
+  getQuestionsBySet,
+  saveResponse,
+  getResponsesBySession,
+  saveGradingResult,
+  getGradingResultBySession,
 };

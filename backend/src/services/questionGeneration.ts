@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { getAnthropicClient, MODELS } from "./anthropicClient.js";
 import { attachQuestionAudio } from "./ttsCache.js";
-import { store } from "../db/store.js";
+import * as store from "../db/store.js";
 import type {
   GeneratedQuestionSet,
   Question,
@@ -104,11 +104,12 @@ Stress intensity for this session: ${params.stressIntensity} (higher intensity s
   }
   const generated = toolUse.input as GeneratedQuestionSet;
 
-  const questionSetId = uuidv4();
+  // QuestionSet row must exist before Questions, which carry a FK to it.
+  const questionSet = await store.createQuestionSet(params.sessionId);
 
   const questions: Question[] = generated.questions.map((q, index) => ({
     id: uuidv4(),
-    questionSetId,
+    questionSetId: questionSet.id,
     order: index,
     type: q.type,
     text: q.text,
@@ -120,19 +121,14 @@ Stress intensity for this session: ${params.stressIntensity} (higher intensity s
   // Pre-synthesize TTS audio for every question now, at schedule time, so
   // there's zero TTS latency for the scripted portion of the interview
   // (docs/ARCHITECTURE.md §1.2 step 1). Non-fatal per question: if TTS isn't
-  // configured (or a single call fails), the session still works in
-  // captions-only mode — see attachQuestionAudio in ttsCache.ts.
+  // configured (or a single call fails), ttsAudioBlobRef stays unset and
+  // that question hard-blocks in the UI — see attachQuestionAudio in
+  // ttsCache.ts and SessionPage's "Question audio unavailable" state.
   await attachQuestionAudio(questions);
 
-  questions.forEach((question) => store.saveQuestion(question));
-  const questionIds = questions.map((q) => q.id);
-
-  const questionSet: QuestionSet = {
-    id: questionSetId,
-    sessionId: params.sessionId,
-    questionIds,
-  };
-  store.saveQuestionSet(questionSet);
+  for (const question of questions) {
+    await store.saveQuestion(question);
+  }
 
   return questionSet;
 }

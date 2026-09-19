@@ -1,0 +1,192 @@
+// Prisma schema — the application's live transactional store (Postgres).
+// Replaces the flat-JSON-file store used through Phase 6; that store was
+// always a placeholder (see the old db/store.ts header comment) and this is
+// the point where real user accounts + payment webhooks make a real
+// database necessary: concurrent-safe writes, exactly-once webhook
+// processing, and queryable admin metrics aren't things a single JSON file
+// can do safely.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum Seniority {
+  junior
+  mid
+  senior
+  staff
+  exec
+}
+
+enum StressIntensity {
+  low
+  medium
+  high
+}
+
+enum SessionStatus {
+  scheduled
+  in_progress
+  completed
+  graded
+  abandoned
+}
+
+enum QuestionType {
+  behavioral
+  technical
+  out_of_box
+  stress
+}
+
+enum ExpectedStructure {
+  STAR
+  technical_walkthrough
+  open_ended
+}
+
+// Mirrors Stripe's own subscription status values directly — no local
+// reinterpretation — so webhook syncing is a straight pass-through.
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  canceled
+  incomplete
+  incomplete_expired
+  unpaid
+  paused
+}
+
+model User {
+  id               String   @id @default(uuid())
+  /// Clerk's user id — the source of truth for identity. We never store a
+  /// password or a Google token ourselves; Clerk handles the OAuth flow and
+  /// hands us a verified session, this is just the foreign key into it.
+  clerkUserId      String   @unique
+  email            String   @unique
+  name             String?
+  role             Role     @default(user)
+  /// Set from ADMIN_EMAILS at provisioning time — see services/auth/provisionUser.ts.
+  stripeCustomerId String?  @unique
+  createdAt        DateTime @default(now())
+
+  sessions         Session[]
+  subscriptions    Subscription[]
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String
+  user                 User               @relation(fields: [userId], references: [id])
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  status               SubscriptionStatus
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([userId])
+}
+
+model Session {
+  id                       String          @id @default(uuid())
+  userId                   String
+  user                     User            @relation(fields: [userId], references: [id])
+  createdAt                DateTime        @default(now())
+  role                     String
+  seniority                Seniority
+  companyContext           String?
+  stressIntensity          StressIntensity
+  status                   SessionStatus
+  /// Denormalized convenience copy of questionSet.id, set once question
+  /// generation completes (the QuestionSet row's own FK to Session is the
+  /// real relation; this just avoids an extra query/include at every call
+  /// site that only wants the id).
+  questionSetId            String?
+  scheduledDurationMinutes Int
+  startedAt                DateTime?
+  endedAt                  DateTime?
+  recordingConsent         Boolean         @default(false)
+  /// Server-local disk paths to sampled presentation frames — present only
+  /// between "submitted at Finish" and "grading pipeline deleted them".
+  presentationFrameRefs    String[]        @default([])
+  presentationSignals      Json?
+
+  questionSet              QuestionSet?
+  responses                Response[]
+  gradingResult            GradingResult?
+
+  @@index([userId])
+}
+
+model QuestionSet {
+  id        String     @id @default(uuid())
+  sessionId String     @unique
+  session   Session    @relation(fields: [sessionId], references: [id])
+  questions Question[]
+}
+
+model Question {
+  id                  String             @id @default(uuid())
+  questionSetId       String
+  questionSet         QuestionSet        @relation(fields: [questionSetId], references: [id])
+  order                Int
+  type                QuestionType
+  text                String
+  /// Grading rubric generated alongside the question — never sent to the candidate.
+  idealAnswerCriteria String
+  expectedStructure   ExpectedStructure?
+  followUpTriggers    String[]           @default([])
+  /// Public path (served under /media) to pre-synthesized TTS audio, if TTS is configured.
+  ttsAudioBlobRef     String?
+
+  responses           Response[]
+
+  @@index([questionSetId])
+}
+
+model Response {
+  id         String   @id @default(uuid())
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [id])
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  transcript String
+  createdAt  DateTime @default(now())
+  /// DynamicFollowUp[] — live interruptions injected mid-answer, stress questions only.
+  dynamicFollowUps Json?
+
+  @@index([sessionId])
+  @@index([questionId])
+}
+
+model GradingResult {
+  id                   String   @id @default(uuid())
+  sessionId            String   @unique
+  session              Session  @relation(fields: [sessionId], references: [id])
+  generatedAt          DateTime @default(now())
+  /// PerQuestionGrade[]
+  perQuestion          Json
+  /// PresentationGrade | null — present only when consented + frames captured.
+  presentation         Json?
+  /// ComposureGrade | null — present only when a live interruption fired.
+  composureUnderStress Json?
+  /// TimeManagement — always present.
+  timeManagement       Json
+  overallScore         Int
+  overallSummary       String
+  topStrengths         String[]
+  topGrowthAreas       String[]
+}
