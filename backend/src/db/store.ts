@@ -17,6 +17,7 @@ import type {
   ImprovementPlan,
   SessionListItem,
   JobRole,
+  BankQuestion,
 } from "../types.js";
 
 // Prisma-backed store, replacing the flat-JSON-file version used through
@@ -359,9 +360,9 @@ export async function countSessionsSinceAllUsers(since: Date): Promise<number> {
 
 // ---- Question sets & questions ----
 
-export async function createQuestionSet(jobRoleId: string): Promise<QuestionSet> {
-  const row = await prisma.questionSet.create({ data: { jobRoleId } });
-  return { id: row.id, jobRoleId: row.jobRoleId ?? undefined };
+export async function createQuestionSet(sessionId: string): Promise<QuestionSet> {
+  const row = await prisma.questionSet.create({ data: { sessionId } });
+  return { id: row.id, sessionId: row.sessionId };
 }
 
 function mapQuestion(row: {
@@ -525,30 +526,11 @@ export async function getFullUserExport(userId: string) {
     prisma.session.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
-      include: { responses: true, gradingResult: true },
+      include: { questionSet: { include: { questions: true } }, responses: true, gradingResult: true },
     }),
     prisma.subscription.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
   ]);
-
-  // QuestionSet is no longer a per-session relation (it's a role-catalog's
-  // shared, cached set — see JobRole.questionSetId), so it can't come along
-  // via `include` above; fetch the distinct sets this user's sessions
-  // actually used and fold each session's questions in by hand instead.
-  const questionSetIds = [...new Set(sessions.map((s) => s.questionSetId).filter((id): id is string => Boolean(id)))];
-  const questionSets = questionSetIds.length
-    ? await prisma.questionSet.findMany({
-        where: { id: { in: questionSetIds } },
-        include: { questions: true },
-      })
-    : [];
-  const questionsBySetId = new Map(questionSets.map((qs) => [qs.id, qs.questions]));
-
-  const sessionsWithQuestions = sessions.map((session) => ({
-    ...session,
-    questions: session.questionSetId ? (questionsBySetId.get(session.questionSetId) ?? []) : [],
-  }));
-
-  return { user, sessions: sessionsWithQuestions, subscriptions };
+  return { user, sessions, subscriptions };
 }
 
 // Deletes every row this user owns, in FK-safe order, inside one
@@ -562,18 +544,22 @@ export async function getFullUserExport(userId: string) {
 export async function deleteUserAndAllData(userId: string): Promise<{ presentationFrameRefs: string[] }> {
   const sessions = await prisma.session.findMany({
     where: { userId },
-    select: { id: true, presentationFrameRefs: true },
+    select: { id: true, questionSetId: true, presentationFrameRefs: true },
   });
   const sessionIds = sessions.map((s) => s.id);
+  const questionSetIds = sessions.map((s) => s.questionSetId).filter((id): id is string => Boolean(id));
   const presentationFrameRefs = sessions.flatMap((s) => s.presentationFrameRefs);
 
-  // Deliberately does NOT touch QuestionSet/Question: those are now a
-  // role-catalog's shared, cached rows (see JobRole.questionSetId), not
-  // this user's own data — other candidates' sessions for the same role
-  // reference the same set, so deleting one account must never delete them.
+  // QuestionSet/Question ARE this user's own private data again (each
+  // session gets its own assembled draw — see questionGeneration.ts) and
+  // get deleted along with the session. The shared, reusable data lives in
+  // BankQuestion instead (owned by JobRole, never touched here — other
+  // candidates' sessions may have drawn the same bank questions).
   await prisma.$transaction([
     prisma.response.deleteMany({ where: { sessionId: { in: sessionIds } } }),
     prisma.gradingResult.deleteMany({ where: { sessionId: { in: sessionIds } } }),
+    prisma.question.deleteMany({ where: { questionSetId: { in: questionSetIds } } }),
+    prisma.questionSet.deleteMany({ where: { id: { in: questionSetIds } } }),
     prisma.session.deleteMany({ where: { id: { in: sessionIds } } }),
     prisma.subscription.deleteMany({ where: { userId } }),
     prisma.user.delete({ where: { id: userId } }),
@@ -593,8 +579,8 @@ function mapJobRole(row: {
   saturationScore: number;
   saturationRationale: string;
   createdAt: Date;
-  questionSetId: string | null;
   usageCount: number;
+  bankSize: number;
 }): JobRole {
   return {
     id: row.id,
@@ -605,8 +591,8 @@ function mapJobRole(row: {
     saturationScore: row.saturationScore,
     saturationRationale: row.saturationRationale,
     createdAt: row.createdAt.toISOString(),
-    questionSetId: row.questionSetId ?? undefined,
     usageCount: row.usageCount,
+    bankSize: row.bankSize,
   };
 }
 
@@ -650,13 +636,85 @@ export async function createJobRole(params: {
   return mapJobRole(row);
 }
 
-/** Attaches a freshly-generated cached set to its role once background generation finishes — see routes/sessions.ts. */
-export async function attachJobRoleQuestionSet(jobRoleId: string, questionSetId: string): Promise<void> {
-  await prisma.jobRole.update({ where: { id: jobRoleId }, data: { questionSetId } });
-}
-
 export async function incrementJobRoleUsage(jobRoleId: string): Promise<void> {
   await prisma.jobRole.update({ where: { id: jobRoleId }, data: { usageCount: { increment: 1 } } });
+}
+
+// ---- Question bank ----
+
+function mapBankQuestion(row: {
+  id: string;
+  jobRoleId: string;
+  type: string;
+  discipline: string;
+  text: string;
+  idealAnswerCriteria: string;
+  expectedStructure: string | null;
+  followUpTriggers: string[];
+  ttsAudioBlobRef: string | null;
+  createdAt: Date;
+  timesUsed: number;
+}): BankQuestion {
+  return {
+    id: row.id,
+    jobRoleId: row.jobRoleId,
+    type: row.type as BankQuestion["type"],
+    discipline: row.discipline,
+    text: row.text,
+    idealAnswerCriteria: row.idealAnswerCriteria,
+    expectedStructure: (row.expectedStructure as BankQuestion["expectedStructure"]) ?? undefined,
+    followUpTriggers: row.followUpTriggers.length ? row.followUpTriggers : undefined,
+    ttsAudioBlobRef: row.ttsAudioBlobRef ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    timesUsed: row.timesUsed,
+  };
+}
+
+export async function getBankQuestionsForRole(jobRoleId: string): Promise<BankQuestion[]> {
+  const rows = await prisma.bankQuestion.findMany({ where: { jobRoleId } });
+  return rows.map(mapBankQuestion);
+}
+
+/** Bulk-inserts newly generated bank questions and bumps JobRole.bankSize to match, in one transaction. */
+export async function createBankQuestions(
+  jobRoleId: string,
+  questions: Array<{
+    type: BankQuestion["type"];
+    discipline: string;
+    text: string;
+    idealAnswerCriteria: string;
+    expectedStructure?: BankQuestion["expectedStructure"];
+    followUpTriggers?: string[];
+    ttsAudioBlobRef?: string;
+  }>,
+): Promise<void> {
+  if (questions.length === 0) return;
+  await prisma.$transaction([
+    prisma.bankQuestion.createMany({
+      data: questions.map((q) => ({
+        jobRoleId,
+        type: q.type,
+        discipline: q.discipline,
+        text: q.text,
+        idealAnswerCriteria: q.idealAnswerCriteria,
+        expectedStructure: q.expectedStructure,
+        followUpTriggers: q.followUpTriggers ?? [],
+        ttsAudioBlobRef: q.ttsAudioBlobRef,
+      })),
+    }),
+    prisma.jobRole.update({ where: { id: jobRoleId }, data: { bankSize: { increment: questions.length } } }),
+  ]);
+}
+
+/** Persists a bank question's freshly-synthesized TTS audio ref — mirrors saveQuestion's update-only upsert semantics. */
+export async function setBankQuestionAudio(id: string, ttsAudioBlobRef: string): Promise<void> {
+  await prisma.bankQuestion.update({ where: { id }, data: { ttsAudioBlobRef } });
+}
+
+/** Bumps timesUsed for every bank question a session just drew — informs future sampling toward the least-used rows. */
+export async function incrementBankQuestionUsage(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await prisma.bankQuestion.updateMany({ where: { id: { in: ids } }, data: { timesUsed: { increment: 1 } } });
 }
 
 // Kept as a namespace object too, for call sites that prefer `store.method()`
@@ -694,6 +752,9 @@ export const store = {
   getJobRoleById,
   searchApprovedJobRoles,
   createJobRole,
-  attachJobRoleQuestionSet,
   incrementJobRoleUsage,
+  getBankQuestionsForRole,
+  createBankQuestions,
+  setBankQuestionAudio,
+  incrementBankQuestionUsage,
 };

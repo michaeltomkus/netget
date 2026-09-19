@@ -35,8 +35,10 @@ export interface JobRole {
   saturationScore: number;
   saturationRationale: string;
   usageCount: number;
-  /** Present once this role's cached question set exists — absent means "approved, generation still in flight." */
-  questionSetId?: string;
+  /** Size of this role's growing question pool — see backend BankQuestion. */
+  bankSize: number;
+  /** Server-computed: bankSize has cleared the threshold for an instant (non-buffered) schedule. */
+  readyToScheduleNow: boolean;
 }
 
 /** How POST /api/sessions wants the caller to proceed. */

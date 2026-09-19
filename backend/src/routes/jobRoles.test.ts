@@ -15,12 +15,13 @@ vi.mock("../middleware/auth.js", () => ({
 const searchApprovedJobRoles = vi.fn<(q: string, seniority: string) => Promise<JobRole[]>>();
 const getJobRoleByKey = vi.fn<(key: string, seniority: string) => Promise<JobRole | undefined>>();
 const createJobRole = vi.fn<(params: unknown) => Promise<JobRole>>();
+const getBankQuestionsForRole = vi.fn<(jobRoleId: string) => Promise<unknown[]>>();
 
 vi.mock("../db/store.js", () => ({
   searchApprovedJobRoles: (...args: [string, string]) => searchApprovedJobRoles(...args),
   getJobRoleByKey: (...args: [string, string]) => getJobRoleByKey(...args),
   createJobRole: (...args: [unknown]) => createJobRole(...args),
-  attachJobRoleQuestionSet: vi.fn(),
+  getBankQuestionsForRole: (...args: [string]) => getBankQuestionsForRole(...args),
 }));
 
 const classifyJobRole = vi.fn<(title: string, seniority: string) => Promise<RoleClassification>>();
@@ -34,10 +35,20 @@ vi.mock("../services/jobRoleClassifier.js", async () => {
   };
 });
 
-vi.mock("../services/questionGeneration.js", () => ({ generateRoleQuestionSet: vi.fn() }));
+const growQuestionBank = vi.fn();
+vi.mock("../services/questionGeneration.js", async () => {
+  const actual = await vi.importActual<typeof import("../services/questionGeneration.js")>(
+    "../services/questionGeneration.js",
+  );
+  return {
+    ...actual,
+    growQuestionBank: (...args: [unknown]) => growQuestionBank(...args),
+  };
+});
 vi.mock("../services/sentry.js", () => ({ captureException: vi.fn() }));
 
-const { jobRolesRouter } = await import("./jobRoles.js");
+const { jobRolesRouter, ensureBankSeeded, maybeGrowBank } = await import("./jobRoles.js");
+const { MIN_BANK_SIZE, BANK_CEILING } = await import("../services/questionGeneration.js");
 
 function buildApp() {
   const app = express();
@@ -56,6 +67,7 @@ const APPROVED_ROLE: JobRole = {
   saturationRationale: "Common role.",
   createdAt: new Date().toISOString(),
   usageCount: 2,
+  bankSize: 0,
 };
 
 beforeEach(() => {
@@ -63,6 +75,8 @@ beforeEach(() => {
   getJobRoleByKey.mockReset();
   createJobRole.mockReset();
   classifyJobRole.mockReset();
+  growQuestionBank.mockReset();
+  getBankQuestionsForRole.mockReset();
 });
 
 describe("GET /api/job-roles", () => {
@@ -78,21 +92,20 @@ describe("GET /api/job-roles", () => {
     expect(res.status).toBe(400);
   });
 
-  it("searches with the trimmed query and seniority", async () => {
-    searchApprovedJobRoles.mockResolvedValueOnce([APPROVED_ROLE]);
+  it("searches with the trimmed query and seniority, adding readyToScheduleNow", async () => {
+    searchApprovedJobRoles.mockResolvedValueOnce([{ ...APPROVED_ROLE, bankSize: MIN_BANK_SIZE }]);
     const app = buildApp();
     const res = await request(app).get("/api/job-roles?q=%20backend%20&seniority=mid");
     expect(res.status).toBe(200);
-    expect(res.body.roles).toEqual([APPROVED_ROLE]);
+    expect(res.body.roles).toEqual([{ ...APPROVED_ROLE, bankSize: MIN_BANK_SIZE, readyToScheduleNow: true }]);
     expect(searchApprovedJobRoles).toHaveBeenCalledWith("backend", "mid");
   });
 
-  it("allows an empty query (top roles for the seniority)", async () => {
-    searchApprovedJobRoles.mockResolvedValueOnce([]);
+  it("marks an under-seeded role as not ready to schedule now", async () => {
+    searchApprovedJobRoles.mockResolvedValueOnce([{ ...APPROVED_ROLE, bankSize: 2 }]);
     const app = buildApp();
     const res = await request(app).get("/api/job-roles?seniority=mid");
-    expect(res.status).toBe(200);
-    expect(searchApprovedJobRoles).toHaveBeenCalledWith("", "mid");
+    expect(res.body.roles[0].readyToScheduleNow).toBe(false);
   });
 });
 
@@ -124,7 +137,7 @@ describe("POST /api/job-roles/request", () => {
     const app = buildApp();
     const res = await request(app).post("/api/job-roles/request").send(VALID_BODY);
     expect(res.status).toBe(200);
-    expect(res.body.jobRole).toEqual(APPROVED_ROLE);
+    expect(res.body.jobRole).toEqual({ ...APPROVED_ROLE, readyToScheduleNow: false });
     expect(classifyJobRole).not.toHaveBeenCalled();
     expect(createJobRole).not.toHaveBeenCalled();
   });
@@ -181,7 +194,7 @@ describe("POST /api/job-roles/request", () => {
     const res = await request(app).post("/api/job-roles/request").send({ title: "sr backend eng", seniority: "mid" });
 
     expect(res.status).toBe(200);
-    expect(res.body.jobRole).toEqual(APPROVED_ROLE);
+    expect(res.body.jobRole).toEqual({ ...APPROVED_ROLE, readyToScheduleNow: false });
     expect(createJobRole).not.toHaveBeenCalled();
   });
 
@@ -193,5 +206,37 @@ describe("POST /api/job-roles/request", () => {
     const res = await request(app).post("/api/job-roles/request").send(VALID_BODY);
 
     expect(res.status).toBe(502);
+  });
+});
+
+describe("ensureBankSeeded", () => {
+  it("skips generation if a concurrent request already seeded the bank", async () => {
+    getBankQuestionsForRole.mockResolvedValueOnce(Array(MIN_BANK_SIZE).fill({ text: "x" }));
+
+    await ensureBankSeeded("role_1", "Backend Engineer", "mid");
+
+    expect(growQuestionBank).not.toHaveBeenCalled();
+  });
+
+  it("generates the initial batch when the bank is empty", async () => {
+    getBankQuestionsForRole.mockResolvedValueOnce([]);
+    growQuestionBank.mockResolvedValueOnce(24);
+
+    await ensureBankSeeded("role_1", "Backend Engineer", "mid");
+
+    expect(growQuestionBank).toHaveBeenCalledWith(expect.objectContaining({ jobRoleId: "role_1" }));
+  });
+});
+
+describe("maybeGrowBank", () => {
+  it("never grows once at the ceiling", async () => {
+    await maybeGrowBank("role_1", "Backend Engineer", "mid", BANK_CEILING);
+    expect(growQuestionBank).not.toHaveBeenCalled();
+  });
+
+  it("always grows below the healthy watermark", async () => {
+    getBankQuestionsForRole.mockResolvedValueOnce([]);
+    await maybeGrowBank("role_1", "Backend Engineer", "mid", 5);
+    expect(growQuestionBank).toHaveBeenCalled();
   });
 });

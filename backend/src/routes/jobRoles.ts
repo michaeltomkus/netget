@@ -3,9 +3,16 @@ import { requireAuth } from "../middleware/auth.js";
 import { jobRoleRequestLimiter } from "../middleware/rateLimit.js";
 import * as store from "../db/store.js";
 import { classifyJobRole, normalizeKey, SATURATION_APPROVAL_THRESHOLD } from "../services/jobRoleClassifier.js";
-import { generateRoleQuestionSet } from "../services/questionGeneration.js";
+import {
+  BANK_CEILING,
+  growQuestionBank,
+  HEALTHY_WATERMARK,
+  INITIAL_SEED_SIZE,
+  MIN_BANK_SIZE,
+  TOP_UP_BATCH_SIZE,
+} from "../services/questionGeneration.js";
 import { captureException } from "../services/sentry.js";
-import type { Seniority } from "../types.js";
+import type { JobRole, Seniority } from "../types.js";
 
 export const jobRolesRouter = Router();
 
@@ -13,6 +20,11 @@ jobRolesRouter.use(requireAuth());
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "staff", "exec"];
 const MAX_TITLE_LENGTH = 100;
+
+/** Adds the client-facing "can this be scheduled instantly right now" flag — see MIN_BANK_SIZE. */
+function toApiJobRole(role: JobRole) {
+  return { ...role, readyToScheduleNow: role.bankSize >= MIN_BANK_SIZE };
+}
 
 // Autocomplete — approved roles only. An empty/short q returns this
 // seniority's most-used roles rather than nothing, so the dropdown isn't
@@ -25,16 +37,16 @@ jobRolesRouter.get("/", async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
   const roles = await store.searchApprovedJobRoles(q, seniority as Seniority);
-  res.json({ roles });
+  res.json({ roles: roles.map(toApiJobRole) });
 });
 
 // Request a role that doesn't already have a catalog entry for this
 // seniority. Normalizes + scores it (services/jobRoleClassifier.ts) and
-// either approves (creating the entry, question generation kicked off
-// separately once the candidate actually schedules it — see
-// routes/sessions.ts) or rejects it outright. Idempotent: the same
-// (title, seniority) — or anything Claude normalizes to the same canonical
-// title — returns the existing row instead of reclassifying and duplicating.
+// either approves (its question bank seeded separately once the candidate
+// actually schedules it — see routes/sessions.ts) or rejects it outright.
+// Idempotent: the same (title, seniority) — or anything Claude normalizes
+// to the same canonical title — returns the existing row instead of
+// reclassifying and duplicating.
 jobRolesRouter.post("/request", jobRoleRequestLimiter, async (req, res) => {
   const { title, seniority } = req.body ?? {};
   if (typeof title !== "string" || title.trim().length === 0) {
@@ -54,7 +66,7 @@ jobRolesRouter.post("/request", jobRoleRequestLimiter, async (req, res) => {
   const rawKey = normalizeKey(trimmedTitle);
   const existingByRawKey = await store.getJobRoleByKey(rawKey, typedSeniority);
   if (existingByRawKey) {
-    return res.json({ jobRole: existingByRawKey });
+    return res.json({ jobRole: toApiJobRole(existingByRawKey) });
   }
 
   try {
@@ -66,7 +78,7 @@ jobRolesRouter.post("/request", jobRoleRequestLimiter, async (req, res) => {
     // again under the normalized key before creating a duplicate entry.
     const existingByNormalizedKey = await store.getJobRoleByKey(normalizedKey, typedSeniority);
     if (existingByNormalizedKey) {
-      return res.json({ jobRole: existingByNormalizedKey });
+      return res.json({ jobRole: toApiJobRole(existingByNormalizedKey) });
     }
 
     const jobRole = await store.createJobRole({
@@ -78,7 +90,7 @@ jobRolesRouter.post("/request", jobRoleRequestLimiter, async (req, res) => {
       saturationRationale: classification.rationale,
     });
 
-    res.json({ jobRole });
+    res.json({ jobRole: toApiJobRole(jobRole) });
   } catch (err) {
     console.error("Failed to classify job role:", err);
     captureException(err, { route: "POST /api/job-roles/request", title: trimmedTitle, seniority: typedSeniority });
@@ -86,20 +98,58 @@ jobRolesRouter.post("/request", jobRoleRequestLimiter, async (req, res) => {
   }
 });
 
-// Best-effort, fire-and-forget: kicks off the once-ever generation call for
-// a freshly-approved role's cached question set. Not awaited by its caller
-// (routes/sessions.ts) — the candidate's 5-minute schedule buffer is what
-// actually gives this time to finish, not the HTTP request. In-process only
-// (no job queue in this app) — a server restart mid-generation loses the
-// attempt; the next person to schedule this same role would then retrigger
-// it, since this is only ever called from a path that checks
-// jobRole.questionSetId is still unset first.
-export async function ensureRoleQuestionSetGenerated(jobRoleId: string, role: string, seniority: Seniority): Promise<void> {
+// Best-effort, fire-and-forget: seeds a freshly-approved role's question
+// bank with its initial batch. Not awaited by its caller (routes/sessions.ts)
+// — the candidate's 5-minute schedule buffer is what actually gives this
+// time to finish, not the HTTP request. In-process only (no job queue in
+// this app) — a server restart mid-generation loses the attempt, but the
+// next person to schedule this same role retriggers it, since this is only
+// ever called from a path that first checks the bank is still under
+// MIN_BANK_SIZE.
+export async function ensureBankSeeded(jobRoleId: string, role: string, seniority: Seniority): Promise<void> {
   try {
-    const questionSet = await generateRoleQuestionSet({ jobRoleId, role, seniority });
-    await store.attachJobRoleQuestionSet(jobRoleId, questionSet.id);
+    const existing = await store.getBankQuestionsForRole(jobRoleId);
+    if (existing.length >= MIN_BANK_SIZE) return; // already seeded by a concurrent request
+    await growQuestionBank({
+      jobRoleId,
+      role,
+      seniority,
+      count: INITIAL_SEED_SIZE,
+      avoidTexts: existing.map((q) => q.text),
+    });
   } catch (err) {
-    console.error(`Failed to generate cached question set for job role ${jobRoleId}:`, err);
-    captureException(err, { context: "ensureRoleQuestionSetGenerated", jobRoleId });
+    console.error(`Failed to seed question bank for job role ${jobRoleId}:`, err);
+    captureException(err, { context: "ensureBankSeeded", jobRoleId });
+  }
+}
+
+// Best-effort, fire-and-forget top-up for an already-schedulable role,
+// called from routes/sessions.ts after an instant (non-buffered) schedule.
+// Grows aggressively below HEALTHY_WATERMARK, then only occasionally above
+// it, up to BANK_CEILING — this is the "keeps growing toward hundreds of
+// questions over time" behavior, paced to bound ongoing Claude spend on any
+// one role rather than regenerating on every single session.
+export async function maybeGrowBank(
+  jobRoleId: string,
+  role: string,
+  seniority: Seniority,
+  currentBankSize: number,
+): Promise<void> {
+  if (currentBankSize >= BANK_CEILING) return;
+  const shouldGrow = currentBankSize < HEALTHY_WATERMARK || Math.random() < 0.15;
+  if (!shouldGrow) return;
+
+  try {
+    const existing = await store.getBankQuestionsForRole(jobRoleId);
+    await growQuestionBank({
+      jobRoleId,
+      role,
+      seniority,
+      count: TOP_UP_BATCH_SIZE,
+      avoidTexts: existing.map((q) => q.text),
+    });
+  } catch (err) {
+    console.error(`Failed to grow question bank for job role ${jobRoleId}:`, err);
+    captureException(err, { context: "maybeGrowBank", jobRoleId });
   }
 }

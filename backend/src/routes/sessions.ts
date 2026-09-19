@@ -4,7 +4,8 @@ import * as store from "../db/store.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createSessionLimiter, gradeSessionLimiter } from "../middleware/rateLimit.js";
 import { checkFreeTierLimit } from "./billing.js";
-import { ensureRoleQuestionSetGenerated } from "./jobRoles.js";
+import { ensureBankSeeded, maybeGrowBank } from "./jobRoles.js";
+import { assembleSessionQuestionSet, MIN_BANK_SIZE, SESSION_DRAW_TARGET } from "../services/questionGeneration.js";
 import { runGradingPipeline } from "../services/grading/gradingPipeline.js";
 import { savePresentationFrames } from "../services/media.js";
 import { captureException } from "../services/sentry.js";
@@ -66,9 +67,9 @@ sessionsRouter.get("/", async (req, res) => {
 });
 
 // How long a freshly-approved role's first session waits before it can
-// begin — long enough for background question generation (routes/jobRoles.ts
-// ensureRoleQuestionSetGenerated) to comfortably finish, which in practice
-// takes seconds, not minutes.
+// begin — long enough for its background question-bank seeding
+// (routes/jobRoles.ts ensureBankSeeded) to comfortably finish, which in
+// practice takes seconds, not minutes.
 const SCHEDULING_BUFFER_MINUTES = 5;
 
 sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
@@ -108,10 +109,12 @@ sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
   const trimmedCompanyContext = typeof companyContext === "string" ? companyContext.trim() : undefined;
   await store.incrementJobRoleUsage(jobRole.id);
 
-  // Already has a cached question set (an established role, or one
-  // approved by an earlier request that already finished generating) —
-  // schedulable immediately, same as every session before this feature existed.
-  if (jobRole.questionSetId) {
+  // Bank has enough for a real, rotating draw (an established role, or one
+  // an earlier buffered request already finished seeding) — schedulable
+  // immediately. Each session still gets its own freshly-sampled
+  // composition (see assembleSessionQuestionSet) rather than replaying one
+  // fixed set verbatim — no Claude call either way, just a DB sample+copy.
+  if (jobRole.bankSize >= MIN_BANK_SIZE) {
     const session = await store.createSession({
       userId: req.appUser!.id,
       role: jobRole.title,
@@ -120,19 +123,26 @@ sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
       stressIntensity,
       scheduledDurationMinutes,
       jobRoleId: jobRole.id,
-      questionSetId: jobRole.questionSetId,
       status: "in_progress",
     });
-    const questions = await store.getQuestionsBySet(jobRole.questionSetId);
+    const questionSet = await assembleSessionQuestionSet({ sessionId: session.id, jobRoleId: jobRole.id });
+    const updated = await store.updateSession(session.id, { questionSetId: questionSet.id });
+    const questions = await store.getQuestionsBySet(questionSet.id);
+
+    // Keeps the bank growing toward hundreds of questions over time,
+    // without a Claude call on every single session — see maybeGrowBank's
+    // own pacing.
+    void maybeGrowBank(jobRole.id, jobRole.title, jobRole.seniority, jobRole.bankSize);
+
     return res.status(201).json({
-      session,
+      session: updated,
       questions: questions.map(toCandidateFacingQuestion),
       scheduling: { status: "ready" },
     });
   }
 
-  // Freshly-approved role, no cached set yet — schedule for 5 minutes out
-  // and generate its question set in the background (not awaited here); the
+  // Freshly-approved role, bank not seeded yet — schedule for 5 minutes out
+  // and seed its question bank in the background (not awaited here); the
   // candidate calls POST /:id/begin once scheduledFor has passed.
   const scheduledFor = new Date(Date.now() + SCHEDULING_BUFFER_MINUTES * 60 * 1000);
   const session = await store.createSession({
@@ -147,7 +157,7 @@ sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
     scheduledFor,
   });
 
-  void ensureRoleQuestionSetGenerated(jobRole.id, jobRole.title, jobRole.seniority);
+  void ensureBankSeeded(jobRole.id, jobRole.title, jobRole.seniority);
 
   res.status(201).json({
     session,
@@ -157,10 +167,11 @@ sessionsRouter.post("/", createSessionLimiter, async (req, res) => {
 });
 
 // Transitions a "scheduled" (buffered) session into "in_progress" once both
-// its wait is over and its role's cached question set is ready. Separate
-// from creation because the wait is the whole point of the buffer — the
-// session isn't retroactively started early just because generation (which
-// in practice takes seconds) happened to finish before the 5 minutes did.
+// its wait is over and its role's bank has at least one full draw's worth
+// of questions seeded. Separate from creation because the wait is the whole
+// point of the buffer — the session isn't retroactively started early just
+// because seeding (which in practice takes seconds) happened to finish
+// before the 5 minutes did.
 sessionsRouter.post("/:id/begin", async (req, res) => {
   const session = await loadOwnedSession(req, res);
   if (!session) return;
@@ -172,21 +183,18 @@ sessionsRouter.post("/:id/begin", async (req, res) => {
     return res.status(425).json({ error: "Too early — this session isn't scheduled to start yet" });
   }
 
-  let questionSetId = session.questionSetId;
-  if (!questionSetId && session.jobRoleId) {
-    const jobRole = await store.getJobRoleById(session.jobRoleId);
-    questionSetId = jobRole?.questionSetId;
-  }
-  if (!questionSetId) {
+  const jobRole = session.jobRoleId ? await store.getJobRoleById(session.jobRoleId) : undefined;
+  if (!jobRole || jobRole.bankSize < SESSION_DRAW_TARGET) {
     return res.status(425).json({ error: "Still preparing your questions — try again in a moment" });
   }
 
+  const questionSet = await assembleSessionQuestionSet({ sessionId: session.id, jobRoleId: jobRole.id });
   const updated = await store.updateSession(session.id, {
     status: "in_progress",
-    questionSetId,
+    questionSetId: questionSet.id,
     startedAt: new Date().toISOString(),
   });
-  const questions = await store.getQuestionsBySet(questionSetId);
+  const questions = await store.getQuestionsBySet(questionSet.id);
 
   res.json({ session: updated, questions: questions.map(toCandidateFacingQuestion) });
 });

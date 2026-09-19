@@ -116,11 +116,10 @@ model Session {
   /// posture as questionSetId below) — a JobRole is never deleted once
   /// created, so there's no dangling-reference risk to guard against.
   jobRoleId                String?
-  /// Denormalized convenience copy of the question set's id — a JobRole's
-  /// cached set (see QuestionSet.jobRoleId) once one exists, so every
-  /// session for that role points at the same rows. Set immediately for an
-  /// already-cached role, or once background generation finishes for a
-  /// freshly-approved one (see routes/sessions.ts).
+  /// Denormalized convenience copy of this session's own QuestionSet id —
+  /// each session gets its own set, assembled by sampling from its
+  /// JobRole's growing question bank (see BankQuestion) rather than reusing
+  /// one fixed set verbatim — see routes/sessions.ts / questionGeneration.ts.
   questionSetId            String?
   scheduledDurationMinutes Int
   /// Null until the candidate is actually answering — for a freshly-approved
@@ -139,6 +138,7 @@ model Session {
   presentationFrameRefs    String[]        @default([])
   presentationSignals      Json?
 
+  questionSet              QuestionSet?
   responses                Response[]
   gradingResult            GradingResult?
 
@@ -173,24 +173,64 @@ model JobRole {
   saturationScore     Int
   saturationRationale String
   createdAt           DateTime      @default(now())
-  /// Set once background generation finishes after the first approval —
-  /// absent means "approved, but still inside its first 5-minute buffer."
-  questionSetId       String?
   /// How many sessions have been scheduled against this role since — a
   /// rough proxy for "how established is this entry," surfaced nowhere yet
   /// but useful once there's a reason to prune or feature roles.
   usageCount          Int           @default(0)
+  /// Denormalized count of this role's BankQuestion rows — avoids an extra
+  /// count query on every autocomplete result just to know whether there's
+  /// enough banked to schedule instantly (see MIN_BANK_SIZE in
+  /// routes/sessions.ts). Bumped whenever growQuestionBank() inserts rows.
+  bankSize            Int           @default(0)
+
+  bankQuestions       BankQuestion[]
 
   @@unique([normalizedKey, seniority])
   @@index([seniority, status])
 }
 
+/// The growing, reusable pool of interview questions behind one role —
+/// replaces an earlier design that cached one fixed 8-10 question set per
+/// role and replayed it identically to every candidate (a "static path,"
+/// easily memorized). Each session instead samples a fresh composition from
+/// this pool (see questionGeneration.ts assembleSessionQuestionSet), and the
+/// pool itself keeps growing over time (growQuestionBank) toward hundreds of
+/// questions spread across disciplines, up to a cost-bounding ceiling.
+model BankQuestion {
+  id                  String             @id @default(uuid())
+  jobRoleId           String
+  jobRole             JobRole            @relation(fields: [jobRoleId], references: [id])
+  type                QuestionType
+  /// Free-text sub-topic tag Claude assigns during generation (e.g. "system
+  /// design", "debugging", "team conflict", "estimation") — deliberately not
+  /// a fixed enum, so coverage can grow organically per role rather than
+  /// being capped by a taxonomy maintained by hand.
+  discipline          String
+  text                String
+  /// Grading rubric — never sent to the candidate.
+  idealAnswerCriteria String
+  expectedStructure   ExpectedStructure?
+  followUpTriggers    String[]           @default([])
+  /// Synthesized once, here, and copied (not re-synthesized) into every
+  /// session's own Question row that draws this bank question — see
+  /// questionGeneration.ts.
+  ttsAudioBlobRef     String?
+  createdAt           DateTime           @default(now())
+  /// How many sessions have drawn this specific question — sampling favors
+  /// the least-used rows first, so a small bank still rotates instead of
+  /// always handing out the same top few.
+  timesUsed           Int                @default(0)
+
+  @@index([jobRoleId, type])
+}
+
 model QuestionSet {
   id        String     @id @default(uuid())
-  /// A role-catalog's cached, reused set — see JobRole.questionSetId, which
-  /// mirrors this id back (same denormalized-copy pattern as
-  /// Session.questionSetId, kept in sync in the same transaction).
-  jobRoleId String?    @unique
+  /// Back to one-per-session (each session gets its own assembled draw from
+  /// its role's BankQuestion pool) — a role's shared/reusable data now
+  /// lives in BankQuestion, not here.
+  sessionId String     @unique
+  session   Session    @relation(fields: [sessionId], references: [id])
   questions Question[]
 }
 

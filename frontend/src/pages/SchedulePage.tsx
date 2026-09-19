@@ -94,7 +94,7 @@ export default function SchedulePage() {
     }
   }
 
-  const readyNow = Boolean(selectedRole?.questionSetId);
+  const readyNow = Boolean(selectedRole?.readyToScheduleNow);
   const submitLabel = loading
     ? "Scheduling…"
     : !selectedRole

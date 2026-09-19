@@ -113,9 +113,9 @@ export interface JobRole {
   saturationScore: number;
   saturationRationale: string;
   createdAt: string;
-  /** Present once this role's cached question set exists — absent means "approved, generation still in flight." */
-  questionSetId?: string;
   usageCount: number;
+  /** Denormalized count of this role's BankQuestion rows — see the Prisma model comment. */
+  bankSize: number;
 }
 
 /** Cheap, on-device-computed signals — never raw video — submitted alongside sampled frames. */
@@ -144,8 +144,26 @@ export interface Question {
 
 export interface QuestionSet {
   id: string;
-  /** The JobRole this cached set belongs to — absent only for legacy sets created before role caching existed. */
-  jobRoleId?: string;
+  sessionId: string;
+}
+
+/**
+ * One question in a role's growing, reusable pool — see the Prisma model
+ * comment. Sampled (not replayed verbatim) into each session's own
+ * QuestionSet by questionGeneration.ts assembleSessionQuestionSet().
+ */
+export interface BankQuestion {
+  id: string;
+  jobRoleId: string;
+  type: QuestionType;
+  discipline: string;
+  text: string;
+  idealAnswerCriteria: string;
+  expectedStructure?: ExpectedStructure;
+  followUpTriggers?: string[];
+  ttsAudioBlobRef?: string;
+  createdAt: string;
+  timesUsed: number;
 }
 
 export interface DynamicFollowUp {
@@ -235,6 +253,8 @@ export interface GradingResult {
 
 export interface GeneratedQuestion {
   type: QuestionType;
+  /** See BankQuestion.discipline. */
+  discipline: string;
   text: string;
   idealAnswerCriteria: string;
   expectedStructure?: ExpectedStructure;
