@@ -68,6 +68,18 @@ enum SubscriptionStatus {
   paused
 }
 
+enum CommunicationChannel {
+  email
+  sms
+  push
+}
+
+enum CommunicationSendStatus {
+  sent
+  skipped_no_provider
+  failed
+}
+
 model User {
   id               String   @id @default(uuid())
   /// Clerk's user id — the source of truth for identity. We never store a
@@ -81,8 +93,9 @@ model User {
   stripeCustomerId String?  @unique
   createdAt        DateTime @default(now())
 
-  sessions         Session[]
-  subscriptions    Subscription[]
+  sessions           Session[]
+  subscriptions      Subscription[]
+  communicationSends CommunicationSend[]
 }
 
 model Subscription {
@@ -138,9 +151,9 @@ model Session {
   presentationFrameRefs    String[]        @default([])
   presentationSignals      Json?
 
-  questionSet              QuestionSet?
-  responses                Response[]
-  gradingResult            GradingResult?
+  questionSet   QuestionSet?
+  responses     Response[]
+  gradingResult GradingResult?
 
   @@index([userId])
 }
@@ -183,7 +196,7 @@ model JobRole {
   /// routes/sessions.ts). Bumped whenever growQuestionBank() inserts rows.
   bankSize            Int           @default(0)
 
-  bankQuestions       BankQuestion[]
+  bankQuestions BankQuestion[]
 
   @@unique([normalizedKey, seniority])
   @@index([seniority, status])
@@ -238,7 +251,7 @@ model Question {
   id                  String             @id @default(uuid())
   questionSetId       String
   questionSet         QuestionSet        @relation(fields: [questionSetId], references: [id])
-  order                Int
+  order               Int
   type                QuestionType
   text                String
   /// Grading rubric generated alongside the question — never sent to the candidate.
@@ -248,19 +261,19 @@ model Question {
   /// Public path (served under /media) to pre-synthesized TTS audio, if TTS is configured.
   ttsAudioBlobRef     String?
 
-  responses           Response[]
+  responses Response[]
 
   @@index([questionSetId])
 }
 
 model Response {
-  id         String   @id @default(uuid())
-  sessionId  String
-  session    Session  @relation(fields: [sessionId], references: [id])
-  questionId String
-  question   Question @relation(fields: [questionId], references: [id])
-  transcript String
-  createdAt  DateTime @default(now())
+  id               String   @id @default(uuid())
+  sessionId        String
+  session          Session  @relation(fields: [sessionId], references: [id])
+  questionId       String
+  question         Question @relation(fields: [questionId], references: [id])
+  transcript       String
+  createdAt        DateTime @default(now())
   /// DynamicFollowUp[] — live interruptions injected mid-answer, stress questions only.
   dynamicFollowUps Json?
 
@@ -330,4 +343,68 @@ model ExperimentConversion {
 
   @@unique([experimentKey, goal, subjectId])
   @@index([experimentKey, variant, goal])
+}
+
+// --- End-user communications -----------------------------------------
+//
+// Admin-authored, templated, multi-channel (email/sms/push) messages to
+// end users, seeded conceptually from a lifecycle-communications reference
+// set (onboarding, billing, engagement, etc.). Each lifecycle event
+// (`typeName`, e.g. "Welcome / Onboarding") can have up to two competing
+// copy variants per channel for A/B testing — `variant` is a free-form
+// label (not constrained to exactly "A"/"B") so a template set isn't
+// hard-capped at two variants forever.
+
+/// A single piece of send-able copy: one lifecycle event × one channel ×
+/// one variant. `{variable}` placeholders in subject/body are resolved at
+/// send time against a per-recipient merge-field map.
+model CommunicationTemplate {
+  id            String               @id @default(uuid())
+  /// Stable slug an admin can reference in the UI/API, e.g. "welcome-onboarding-email-a".
+  key           String               @unique
+  /// The lifecycle event this copy belongs to, e.g. "Welcome / Onboarding".
+  typeName      String
+  /// One of a small fixed set of lifecycle categories (Onboarding, Billing & Payments, ...).
+  category      String
+  channel       CommunicationChannel
+  variant       String
+  /// Email subject / push notification title. Unused for sms (kept nullable rather than "").
+  subject       String?
+  body          String
+  /// `{name}` tokens found in subject+body, e.g. ["first_name", "app_name"] —
+  /// computed at create/update time so the composer can show required merge fields
+  /// without re-parsing the template text.
+  variablesUsed String[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  sends CommunicationSend[]
+
+  @@unique([typeName, channel, variant])
+  @@index([category])
+}
+
+/// One row per attempted send to one recipient — the admin-facing audit
+/// log and the source of truth for "how many people got variant A vs B."
+model CommunicationSend {
+  id              String                  @id @default(uuid())
+  templateId      String
+  template        CommunicationTemplate   @relation(fields: [templateId], references: [id])
+  userId          String
+  user            User                    @relation(fields: [userId], references: [id])
+  channel         CommunicationChannel
+  variant         String
+  status          CommunicationSendStatus
+  renderedSubject String?
+  renderedBody    String
+  /// Present only when status is "failed" or "skipped_no_provider".
+  error           String?
+  /// The admin User.id who triggered this send (batch sends share a `batchId`).
+  sentByUserId    String
+  batchId         String
+  createdAt       DateTime                @default(now())
+
+  @@index([userId])
+  @@index([templateId, variant])
+  @@index([batchId])
 }

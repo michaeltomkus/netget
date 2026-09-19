@@ -55,6 +55,9 @@ app.get("/api/health", (_req, res) => {
     hasAuth: Boolean(process.env.CLERK_SECRET_KEY),
     hasBilling: Boolean(process.env.STRIPE_SECRET_KEY),
     hasErrorMonitoring: isSentryConfigured(),
+    hasEmailProvider: Boolean(process.env.EMAIL_PROVIDER_WEBHOOK_URL),
+    hasSmsProvider: Boolean(process.env.SMS_PROVIDER_WEBHOOK_URL),
+    hasPushProvider: Boolean(process.env.PUSH_PROVIDER_WEBHOOK_URL),
   });
 });
 

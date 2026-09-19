@@ -1,9 +1,14 @@
 import type {
   AdminMetrics,
   AppUser,
+  AudienceSelector,
   BillingInterval,
   BillingStatus,
   CandidateQuestion,
+  CommunicationChannel,
+  CommunicationSend,
+  CommunicationSendSummary,
+  CommunicationTemplate,
   DynamicFollowUp,
   ExperimentDefinition,
   ExperimentResults,
@@ -204,4 +209,36 @@ export function getAdminExperiments() {
 
 export function getExperimentResults(key: string) {
   return request<ExperimentResults>(`/api/admin/experiments/${key}/results`);
+}
+
+export function getCommunicationTemplates() {
+  return request<{ templates: CommunicationTemplate[]; channelStatus: Record<CommunicationChannel, boolean> }>(
+    "/api/admin/communications/templates",
+  );
+}
+
+export function seedCommunicationTemplates() {
+  return request<{ seeded: number }>("/api/admin/communications/templates/seed", { method: "POST" });
+}
+
+export function getCommunicationHistory(limit = 100) {
+  return request<{ sends: CommunicationSend[] }>(`/api/admin/communications/history?limit=${limit}`);
+}
+
+export function getCommunicationVariantCounts(typeName: string, channel: CommunicationChannel) {
+  return request<{ counts: { variant: string; status: string; count: number }[] }>(
+    `/api/admin/communications/variant-counts?typeName=${encodeURIComponent(typeName)}&channel=${channel}`,
+  );
+}
+
+export function sendCommunication(params: {
+  typeName: string;
+  channel: CommunicationChannel;
+  audience: AudienceSelector;
+  extraVars?: Record<string, string>;
+}) {
+  return request<CommunicationSendSummary>("/api/admin/communications/send", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
 }

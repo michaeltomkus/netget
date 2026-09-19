@@ -1,0 +1,2295 @@
+[
+  {
+    "key": "welcome-onboarding-email-a",
+    "typeName": "Welcome / Onboarding",
+    "category": "Onboarding",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Welcome to {app_name}, {first_name}! 🎉",
+    "body": "Hi {first_name},\n\nWelcome to {app_name}! We're thrilled to have you on board.\n\nYour account is ready. Here's how to get started:\n\n✅ Complete your profile\n✅ Set up your first workspace\n✅ Invite your team\n\nNeed help? Our support team is available 24/7 at {support_link}.\n\n[Get Started →]({dashboard_link})\n\nBest,\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name",
+      "support_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "welcome-onboarding-email-b",
+    "typeName": "Welcome / Onboarding",
+    "category": "Onboarding",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Your {app_name} account is ready — let's dive in",
+    "body": "Hey {first_name},\n\nYou're in! Your {app_name} account is set up and ready to explore.\n\nWe put together a quick-start checklist to help you hit the ground running:\n\n👉 Watch our 2-minute intro: {intro_video_link}\n👉 Read the getting started guide: {guide_link}\n👉 Import your data: {import_link}\n\nOur team is here if you have any questions — just reply to this email.\n\nCheers,\n{app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "guide_link",
+      "import_link",
+      "intro_video_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "welcome-onboarding-sms-a",
+    "typeName": "Welcome / Onboarding",
+    "category": "Onboarding",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "Welcome to {app_name}, {first_name}! 🎉 Your account is ready. Get started here: {dashboard_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name"
+    ]
+  },
+  {
+    "key": "welcome-onboarding-sms-b",
+    "typeName": "Welcome / Onboarding",
+    "category": "Onboarding",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "Hi {first_name}! You're all set on {app_name}. Jump in here: {dashboard_link} — Reply HELP for assistance.",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name"
+    ]
+  },
+  {
+    "key": "welcome-onboarding-push-a",
+    "typeName": "Welcome / Onboarding",
+    "category": "Onboarding",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Welcome to {app_name}! 🎉",
+    "body": "Your account is ready. Tap to set up your workspace and get started.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "welcome-onboarding-push-b",
+    "typeName": "Welcome / Onboarding",
+    "category": "Onboarding",
+    "channel": "push",
+    "variant": "B",
+    "subject": "You're in, {first_name}! Let's go 🚀",
+    "body": "Your {app_name} account is live. Tap to complete your setup in 2 minutes.",
+    "variablesUsed": [
+      "app_name",
+      "first_name"
+    ]
+  },
+  {
+    "key": "email-verification-email-a",
+    "typeName": "Email Verification",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Please verify your {app_name} email address",
+    "body": "Hi {first_name},\n\nThanks for signing up for {app_name}! Please verify your email address to activate your account.\n\n[Verify My Email Address]({verification_link})\n\n⏰ This link expires in 24 hours.\n\nIf you didn't sign up for {app_name}, you can safely ignore this email.\n\nThe {app_name} Team",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "verification_link"
+    ]
+  },
+  {
+    "key": "email-verification-email-b",
+    "typeName": "Email Verification",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Confirm your account — one quick step left",
+    "body": "Hey {first_name},\n\nYou're almost there! Just confirm your email to unlock your {app_name} account and start using all its features.\n\n[Confirm My Email →]({verification_link})\n\nThis confirmation link expires in 24 hours. If you didn't create this account, no action is needed — your email won't be added.\n\n— {app_name}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "verification_link"
+    ]
+  },
+  {
+    "key": "email-verification-sms-a",
+    "typeName": "Email Verification",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Verify your email to activate your account → {verification_link} (expires in 24 hrs)",
+    "variablesUsed": [
+      "app_name",
+      "verification_link"
+    ]
+  },
+  {
+    "key": "email-verification-sms-b",
+    "typeName": "Email Verification",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "Hi {first_name}! Confirm your {app_name} account here: {verification_link} — Link expires in 24 hours.",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "verification_link"
+    ]
+  },
+  {
+    "key": "email-verification-push-a",
+    "typeName": "Email Verification",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Verify Your Email",
+    "body": "One step left! Confirm your email address to activate your {app_name} account.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "email-verification-push-b",
+    "typeName": "Email Verification",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Almost there, {first_name}! 📬",
+    "body": "Tap to verify your email and unlock your full {app_name} account.",
+    "variablesUsed": [
+      "app_name",
+      "first_name"
+    ]
+  },
+  {
+    "key": "password-reset-email-a",
+    "typeName": "Password Reset",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Reset your {app_name} password",
+    "body": "Hi {first_name},\n\nWe received a request to reset the password for your {app_name} account associated with {user_email}.\n\n[Reset My Password]({reset_link})\n\n⏰ This link expires in 1 hour.\n\nIf you didn't request a password reset, please ignore this email — your account remains secure.\n\nThe {app_name} Security Team",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "reset_link",
+      "user_email"
+    ]
+  },
+  {
+    "key": "password-reset-email-b",
+    "typeName": "Password Reset",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Your password reset link is here",
+    "body": "Hey {first_name},\n\nForgot your password? No worries — it happens! Click below to create a new one.\n\n[Create New Password →]({reset_link})\n\nThis link is valid for 1 hour. After that, you'll need to request a new one.\n\nDidn't request this? Your account is safe — no changes have been made.\n\n— {app_name}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "reset_link"
+    ]
+  },
+  {
+    "key": "password-reset-sms-a",
+    "typeName": "Password Reset",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Reset your password → {reset_link} (expires in 1 hour). Didn't request this? Ignore this message.",
+    "variablesUsed": [
+      "app_name",
+      "reset_link"
+    ]
+  },
+  {
+    "key": "password-reset-sms-b",
+    "typeName": "Password Reset",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} password reset link: {reset_link} — Valid for 1 hour. Not you? No action needed.",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "reset_link"
+    ]
+  },
+  {
+    "key": "password-reset-push-a",
+    "typeName": "Password Reset",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Password Reset Requested 🔑",
+    "body": "Tap to reset your {app_name} password. Your reset link expires in 1 hour.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "password-reset-push-b",
+    "typeName": "Password Reset",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Reset Your Password",
+    "body": "We received your request. Tap to create a new {app_name} password — link valid for 1 hour.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "free-trial-started-email-a",
+    "typeName": "Free Trial Started",
+    "category": "Onboarding",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {trial_days}-day free trial of {app_name} has started!",
+    "body": "Hi {first_name},\n\nYour free trial of {app_name} is officially underway! You have {trial_days} days to explore everything we offer — no credit card required.\n\nWhat you can do during your trial:\n• Access all {plan_name} features\n• Invite up to {trial_team_limit} team members\n• Integrate with your existing tools\n\nTrial ends: {trial_end_date}\n\n[Explore {app_name} Now →]({dashboard_link})\n\nQuestions? We're here at {support_link}.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name",
+      "plan_name",
+      "support_link",
+      "trial_days",
+      "trial_end_date",
+      "trial_team_limit",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "free-trial-started-email-b",
+    "typeName": "Free Trial Started",
+    "category": "Onboarding",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Your {app_name} trial starts NOW — here's what to do first",
+    "body": "Hey {first_name},\n\nYour {trial_days}-day {app_name} trial just kicked off. Here's the fastest path to seeing real value:\n\n🚀 Day 1: Set up your first project → {dashboard_link}\n📊 Day 3: Run your first report → {reports_link}\n👥 Day 7: Invite your team → {invite_link}\n\nYour trial runs until {trial_end_date}. Make the most of every day.\n\n[Start Exploring →]({dashboard_link})\n\nCheers,\n{app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name",
+      "invite_link",
+      "reports_link",
+      "trial_days",
+      "trial_end_date",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "free-trial-started-sms-a",
+    "typeName": "Free Trial Started",
+    "category": "Onboarding",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your {trial_days}-day free trial just started! Log in and explore: {dashboard_link} — Trial ends {trial_end_date}.",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "trial_days",
+      "trial_end_date"
+    ]
+  },
+  {
+    "key": "free-trial-started-sms-b",
+    "typeName": "Free Trial Started",
+    "category": "Onboarding",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "Hi {first_name}! Your {app_name} trial is live — {trial_days} days to explore everything. Start here: {dashboard_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name",
+      "trial_days"
+    ]
+  },
+  {
+    "key": "free-trial-started-push-a",
+    "typeName": "Free Trial Started",
+    "category": "Onboarding",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Trial Started! 🚀",
+    "body": "Your {trial_days}-day {app_name} trial has begun. Tap to start exploring — no credit card needed.",
+    "variablesUsed": [
+      "app_name",
+      "trial_days"
+    ]
+  },
+  {
+    "key": "free-trial-started-push-b",
+    "typeName": "Free Trial Started",
+    "category": "Onboarding",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Your Free Trial Is Live",
+    "body": "{trial_days} days to explore {app_name}. Tap to get started and make the most of your trial.",
+    "variablesUsed": [
+      "app_name",
+      "trial_days"
+    ]
+  },
+  {
+    "key": "trial-expiration-warning-email-a",
+    "typeName": "Trial Expiration Warning",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {app_name} trial ends in {trial_days_remaining} days",
+    "body": "Hi {first_name},\n\nJust a friendly heads up — your {app_name} free trial ends in {trial_days_remaining} days, on {trial_end_date}.\n\nTo keep uninterrupted access to everything you've been using, upgrade to a paid plan today.\n\n[Upgrade Now — Plans from {starting_price}/mo]({upgrade_link})\n\nQuestions about which plan is right for you? Reply to this email and we'll help.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "starting_price",
+      "trial_days_remaining",
+      "trial_end_date",
+      "unsubscribe_link",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expiration-warning-email-b",
+    "typeName": "Trial Expiration Warning",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "⏰ {trial_days_remaining} days left in your {app_name} trial",
+    "body": "Hey {first_name},\n\nTime is running out! Your {app_name} trial wraps up on {trial_end_date}.\n\nDon't lose access to the features you've built into your workflow. Upgrading takes 2 minutes.\n\n[Lock In Your Plan →]({upgrade_link})\n\nNeed help choosing? [Book a quick call with our team →]({calendly_link})\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "calendly_link",
+      "first_name",
+      "trial_days_remaining",
+      "trial_end_date",
+      "unsubscribe_link",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expiration-warning-sms-a",
+    "typeName": "Trial Expiration Warning",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your trial ends in {trial_days_remaining} days ({trial_end_date}). Upgrade to keep access: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "trial_days_remaining",
+      "trial_end_date",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expiration-warning-sms-b",
+    "typeName": "Trial Expiration Warning",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, only {trial_days_remaining} days left on your {app_name} trial. Don't lose your work — upgrade: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "trial_days_remaining",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expiration-warning-push-a",
+    "typeName": "Trial Expiration Warning",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Trial Ending Soon ⏰",
+    "body": "{trial_days_remaining} days left. Upgrade now to keep full access to {app_name}.",
+    "variablesUsed": [
+      "app_name",
+      "trial_days_remaining"
+    ]
+  },
+  {
+    "key": "trial-expiration-warning-push-b",
+    "typeName": "Trial Expiration Warning",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "{trial_days_remaining} Days Remaining",
+    "body": "Your {app_name} trial ends {trial_end_date}. Tap to upgrade and stay uninterrupted.",
+    "variablesUsed": [
+      "app_name",
+      "trial_days_remaining",
+      "trial_end_date"
+    ]
+  },
+  {
+    "key": "trial-expired-email-a",
+    "typeName": "Trial Expired",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {app_name} trial has ended",
+    "body": "Hi {first_name},\n\nYour free trial of {app_name} officially expired on {trial_end_date}. We hope you had a chance to explore everything!\n\nThe good news: your data is safely preserved. Upgrade today to regain full access to your account and all your work.\n\n[Reactivate My Account →]({upgrade_link})\n\nStill have questions? Our team is standing by at {support_link}.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "support_link",
+      "trial_end_date",
+      "unsubscribe_link",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expired-email-b",
+    "typeName": "Trial Expired",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Your trial ended — but your data is waiting for you",
+    "body": "Hey {first_name},\n\nYour {app_name} trial ended on {trial_end_date}. Here's what you should know:\n\n✅ Everything you created during your trial is still safely stored\n✅ You can upgrade any time in the next 30 days to pick up right where you left off\n✅ No setup required — your workspace is exactly as you left it\n\n[Resume Where You Left Off →]({upgrade_link})\n\nSpecial offer: Use code COMEBACK20 for 20% off your first month.\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "trial_end_date",
+      "unsubscribe_link",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expired-sms-a",
+    "typeName": "Trial Expired",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your free trial ended. Your data is saved — upgrade now to get back in: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expired-sms-b",
+    "typeName": "Trial Expired",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} trial is over. Don't lose your work! Reactivate your account: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "trial-expired-push-a",
+    "typeName": "Trial Expired",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Trial Expired",
+    "body": "Your {app_name} trial has ended. Upgrade to keep access to your data and workspace.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "trial-expired-push-b",
+    "typeName": "Trial Expired",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Your Data Is Waiting 📦",
+    "body": "Trial ended but your work is saved. Tap to reactivate your {app_name} account.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "subscription-upgrade-email-a",
+    "typeName": "Subscription Upgrade",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "You've upgraded to {plan_name} — welcome to the next level!",
+    "body": "Hi {first_name},\n\nCongratulations! You've successfully upgraded your {app_name} account to the {plan_name} plan.\n\nWhat's new for you:\n• {feature_1}\n• {feature_2}\n• {feature_3}\n\nYour new plan is active immediately. Next billing: {next_billing_date} for {billing_amount}.\n\n[Explore Your New Features →]({dashboard_link})\n\nThank you for choosing {app_name}.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "dashboard_link",
+      "feature_1",
+      "feature_2",
+      "feature_3",
+      "first_name",
+      "next_billing_date",
+      "plan_name",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "subscription-upgrade-email-b",
+    "typeName": "Subscription Upgrade",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "🚀 {plan_name} is now active — here's what you just unlocked",
+    "body": "Hey {first_name},\n\nGreat choice — you're now on the {plan_name} plan! Here's a quick look at what's new:\n\n✨ {feature_1}\n✨ {feature_2}\n✨ {feature_3}\n\nNext charge: {billing_amount} on {next_billing_date}.\n\nNeed help getting the most from your new plan? [Read our {plan_name} guide →]({plan_guide_link})\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "feature_1",
+      "feature_2",
+      "feature_3",
+      "first_name",
+      "next_billing_date",
+      "plan_guide_link",
+      "plan_name",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "subscription-upgrade-sms-a",
+    "typeName": "Subscription Upgrade",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: You've upgraded to {plan_name}! Your new features are live now. Explore them: {dashboard_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "plan_name"
+    ]
+  },
+  {
+    "key": "subscription-upgrade-sms-b",
+    "typeName": "Subscription Upgrade",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, you're now on the {app_name} {plan_name} plan — new features are unlocked! Check them out: {dashboard_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name",
+      "plan_name"
+    ]
+  },
+  {
+    "key": "subscription-upgrade-push-a",
+    "typeName": "Subscription Upgrade",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Upgrade Successful! 🎉",
+    "body": "Welcome to {plan_name}. Your new {app_name} features are ready — tap to explore.",
+    "variablesUsed": [
+      "app_name",
+      "plan_name"
+    ]
+  },
+  {
+    "key": "subscription-upgrade-push-b",
+    "typeName": "Subscription Upgrade",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "You're on {plan_name} Now",
+    "body": "Your upgrade is live! Discover what's new in your {app_name} account.",
+    "variablesUsed": [
+      "app_name",
+      "plan_name"
+    ]
+  },
+  {
+    "key": "subscription-downgrade-email-a",
+    "typeName": "Subscription Downgrade",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {app_name} plan has been updated to {plan_name}",
+    "body": "Hi {first_name},\n\nThis confirms your {app_name} subscription has been updated to the {plan_name} plan, effective {effective_date}.\n\nPlease note: Some features from your previous plan may no longer be available after {effective_date}. Review what's included in your current plan in your account settings.\n\n[Review My Plan →]({billing_link})\n\nIf this was a mistake or you have questions, please contact us at {support_link}.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_link",
+      "effective_date",
+      "first_name",
+      "plan_name",
+      "support_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "subscription-downgrade-email-b",
+    "typeName": "Subscription Downgrade",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Subscription change confirmed — a few things to know",
+    "body": "Hey {first_name},\n\nWe've processed your plan change to {plan_name}, effective {effective_date}.\n\nHere's what you should know:\n• Your current features remain active until {effective_date}\n• Some premium features will become unavailable after that date\n• Your data and workspace will remain intact\n\nChanged your mind? [Restore my previous plan →]({upgrade_link})\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "effective_date",
+      "first_name",
+      "plan_name",
+      "unsubscribe_link",
+      "upgrade_link"
+    ]
+  },
+  {
+    "key": "subscription-downgrade-sms-a",
+    "typeName": "Subscription Downgrade",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your plan has been updated to {plan_name}, effective {effective_date}. Questions? Visit: {support_link}",
+    "variablesUsed": [
+      "app_name",
+      "effective_date",
+      "plan_name",
+      "support_link"
+    ]
+  },
+  {
+    "key": "subscription-downgrade-sms-b",
+    "typeName": "Subscription Downgrade",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} subscription changes to {plan_name} on {effective_date}. See details: {billing_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_link",
+      "effective_date",
+      "first_name",
+      "plan_name"
+    ]
+  },
+  {
+    "key": "subscription-downgrade-push-a",
+    "typeName": "Subscription Downgrade",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Plan Updated",
+    "body": "Your {app_name} subscription has been changed to {plan_name}, effective {effective_date}.",
+    "variablesUsed": [
+      "app_name",
+      "effective_date",
+      "plan_name"
+    ]
+  },
+  {
+    "key": "subscription-downgrade-push-b",
+    "typeName": "Subscription Downgrade",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Subscription Change Confirmed",
+    "body": "Your plan update to {plan_name} takes effect on {effective_date}. Tap to review your features.",
+    "variablesUsed": [
+      "effective_date",
+      "plan_name"
+    ]
+  },
+  {
+    "key": "payment-successful-email-a",
+    "typeName": "Payment Successful",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Payment confirmed — thank you, {first_name}!",
+    "body": "Hi {first_name},\n\nYour payment for {app_name} has been successfully processed. Thank you!\n\nPayment Details:\n• Amount: {billing_amount}\n• Plan: {plan_name}\n• Date: {payment_date}\n• Invoice #: {invoice_number}\n\n[View & Download Invoice →]({invoice_link})\n\nYour next billing date is {next_billing_date}.\n\nThank you for being a {app_name} customer!\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "first_name",
+      "invoice_link",
+      "invoice_number",
+      "next_billing_date",
+      "payment_date",
+      "plan_name",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "payment-successful-email-b",
+    "typeName": "Payment Successful",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "✅ Receipt for your {app_name} subscription — {billing_amount}",
+    "body": "Hi {first_name},\n\nWe've received your payment — you're all set!\n\nInvoice #{invoice_number} | {payment_date} | {plan_name} plan | {billing_amount}\n\n[Download PDF Receipt →]({invoice_link})\n\nNext charge: {billing_amount} on {next_billing_date}.\n\nQuestions about your bill? Reply to this email or visit {support_link}.\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "first_name",
+      "invoice_link",
+      "invoice_number",
+      "next_billing_date",
+      "payment_date",
+      "plan_name",
+      "support_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "payment-successful-sms-a",
+    "typeName": "Payment Successful",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Payment of {billing_amount} received ✅ Invoice #{invoice_number}. Thank you for your continued support!",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "invoice_number"
+    ]
+  },
+  {
+    "key": "payment-successful-sms-b",
+    "typeName": "Payment Successful",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} payment of {billing_amount} was successful. Next billing: {next_billing_date}. Receipt: {invoice_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "first_name",
+      "invoice_link",
+      "next_billing_date"
+    ]
+  },
+  {
+    "key": "payment-successful-push-a",
+    "typeName": "Payment Successful",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Payment Confirmed ✅",
+    "body": "Your {billing_amount} payment for {app_name} was successful. Tap to view your receipt.",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount"
+    ]
+  },
+  {
+    "key": "payment-successful-push-b",
+    "typeName": "Payment Successful",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Receipt Ready",
+    "body": "Your {app_name} payment of {billing_amount} is confirmed. Next billing on {next_billing_date}.",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "next_billing_date"
+    ]
+  },
+  {
+    "key": "payment-failed-declined-email-a",
+    "typeName": "Payment Failed / Declined",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Action required: Your {app_name} payment failed",
+    "body": "Hi {first_name},\n\nWe were unable to process your payment of {billing_amount} for your {app_name} {plan_name} subscription.\n\nTo keep your account active and avoid any service interruption, please update your payment information as soon as possible.\n\n[Update Payment Method →]({billing_link})\n\n⚠️ Your account will remain active for {grace_period_days} days while we retry the payment.\n\nNeed help? Contact us at {support_link}.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "billing_link",
+      "first_name",
+      "grace_period_days",
+      "plan_name",
+      "support_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "payment-failed-declined-email-b",
+    "typeName": "Payment Failed / Declined",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "⚠️ We couldn't charge your card — quick fix needed",
+    "body": "Hey {first_name},\n\nOops — your payment of {billing_amount} didn't go through. This often happens when a card expires or billing details change.\n\nIt's a 2-minute fix — just update your payment method and we'll retry automatically.\n\n[Fix My Payment Now →]({billing_link})\n\nYou have {grace_period_days} days before your {app_name} account is affected.\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "billing_link",
+      "first_name",
+      "grace_period_days",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "payment-failed-declined-sms-a",
+    "typeName": "Payment Failed / Declined",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your payment of {billing_amount} failed. Update your billing info to avoid service interruption: {billing_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "billing_link"
+    ]
+  },
+  {
+    "key": "payment-failed-declined-sms-b",
+    "typeName": "Payment Failed / Declined",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, we couldn't process your {app_name} payment. Please update your card: {billing_link} — You have {grace_period_days} days.",
+    "variablesUsed": [
+      "app_name",
+      "billing_link",
+      "first_name",
+      "grace_period_days"
+    ]
+  },
+  {
+    "key": "payment-failed-declined-push-a",
+    "typeName": "Payment Failed / Declined",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Payment Failed ⚠️",
+    "body": "We couldn't process your {billing_amount} payment for {app_name}. Tap to update your payment method.",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount"
+    ]
+  },
+  {
+    "key": "payment-failed-declined-push-b",
+    "typeName": "Payment Failed / Declined",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Action Required",
+    "body": "Your {app_name} payment failed. Update your billing info to keep your account active.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "invoice-receipt-email-a",
+    "typeName": "Invoice / Receipt",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {app_name} invoice #{invoice_number} is ready",
+    "body": "Hi {first_name},\n\nYour {app_name} invoice for {billing_period} is now available.\n\nInvoice Summary:\n• Invoice #: {invoice_number}\n• Billing Period: {billing_period}\n• Amount: {billing_amount}\n• Due Date: {payment_due_date}\n\n[View & Download Invoice →]({invoice_link})\n\nThank you for your business!\n\nThe {app_name} Finance Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "billing_period",
+      "first_name",
+      "invoice_link",
+      "invoice_number",
+      "payment_due_date",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "invoice-receipt-email-b",
+    "typeName": "Invoice / Receipt",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Invoice #{invoice_number} — {billing_amount} | {billing_period}",
+    "body": "Hi {first_name},\n\nHere's your latest {app_name} invoice.\n\nInvoice #{invoice_number} · {billing_period} · {billing_amount} · Due {payment_due_date}\n\n[Download PDF →]({invoice_link})\n\nYour payment method on file will be charged automatically on {payment_due_date}. For billing questions, contact {support_link}.\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "billing_period",
+      "first_name",
+      "invoice_link",
+      "invoice_number",
+      "payment_due_date",
+      "support_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "invoice-receipt-sms-a",
+    "typeName": "Invoice / Receipt",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Invoice #{invoice_number} for {billing_amount} is available. View here: {invoice_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "invoice_link",
+      "invoice_number"
+    ]
+  },
+  {
+    "key": "invoice-receipt-sms-b",
+    "typeName": "Invoice / Receipt",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} invoice #{invoice_number} ({billing_amount}) is ready to download: {invoice_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "first_name",
+      "invoice_link",
+      "invoice_number"
+    ]
+  },
+  {
+    "key": "invoice-receipt-push-a",
+    "typeName": "Invoice / Receipt",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Invoice Ready 🧾",
+    "body": "Your {app_name} invoice #{invoice_number} for {billing_amount} is available. Tap to view.",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "invoice_number"
+    ]
+  },
+  {
+    "key": "invoice-receipt-push-b",
+    "typeName": "Invoice / Receipt",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "New Invoice #{invoice_number}",
+    "body": "Your {billing_amount} invoice from {app_name} is ready to download.",
+    "variablesUsed": [
+      "app_name",
+      "billing_amount",
+      "invoice_number"
+    ]
+  },
+  {
+    "key": "feature-announcement-email-a",
+    "typeName": "Feature Announcement",
+    "category": "Product & Features",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Introducing {feature_name} — now live in {app_name}",
+    "body": "Hi {first_name},\n\nWe're excited to announce a powerful new feature: {feature_name}!\n\n{feature_description}\n\nWhat you can do with {feature_name}:\n• {benefit_1}\n• {benefit_2}\n• {benefit_3}\n\n{feature_name} is available now on your {plan_name} plan.\n\n[Try {feature_name} Now →]({feature_link})\n\nHappy building,\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "benefit_1",
+      "benefit_2",
+      "benefit_3",
+      "feature_description",
+      "feature_link",
+      "feature_name",
+      "first_name",
+      "plan_name",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "feature-announcement-email-b",
+    "typeName": "Feature Announcement",
+    "category": "Product & Features",
+    "channel": "email",
+    "variant": "B",
+    "subject": "🚀 New in {app_name}: {feature_name} just launched",
+    "body": "Hey {first_name},\n\nBig news! We just launched {feature_name} — and it's available in your account right now.\n\n{feature_description}\n\nHere's what early users are saying: \"{testimonial_quote}\" — {testimonial_author}\n\n[See It in Action →]({feature_link})\n\nAs always, reply with feedback — we read every message.\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "feature_description",
+      "feature_link",
+      "feature_name",
+      "first_name",
+      "testimonial_author",
+      "testimonial_quote",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "feature-announcement-sms-a",
+    "typeName": "Feature Announcement",
+    "category": "Product & Features",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: {feature_name} is now live! Explore the new feature in your account: {feature_link}",
+    "variablesUsed": [
+      "app_name",
+      "feature_link",
+      "feature_name"
+    ]
+  },
+  {
+    "key": "feature-announcement-sms-b",
+    "typeName": "Feature Announcement",
+    "category": "Product & Features",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "New in {app_name}: {feature_name} just launched! Be among the first to try it: {feature_link}",
+    "variablesUsed": [
+      "app_name",
+      "feature_link",
+      "feature_name"
+    ]
+  },
+  {
+    "key": "feature-announcement-push-a",
+    "typeName": "Feature Announcement",
+    "category": "Product & Features",
+    "channel": "push",
+    "variant": "A",
+    "subject": "New Feature: {feature_name} 🚀",
+    "body": "{feature_name} is now live in {app_name}. Tap to check it out.",
+    "variablesUsed": [
+      "app_name",
+      "feature_name"
+    ]
+  },
+  {
+    "key": "feature-announcement-push-b",
+    "typeName": "Feature Announcement",
+    "category": "Product & Features",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Just Launched!",
+    "body": "{feature_name} is here. See what's new in your {app_name} account right now.",
+    "variablesUsed": [
+      "app_name",
+      "feature_name"
+    ]
+  },
+  {
+    "key": "product-update-release-notes-email-a",
+    "typeName": "Product Update / Release Notes",
+    "category": "Product & Features",
+    "channel": "email",
+    "variant": "A",
+    "subject": "{app_name} update: Here's what's new in {month_year}",
+    "body": "Hi {first_name},\n\nHere's a roundup of everything new and improved in {app_name} this month:\n\n✨ New Features\n• {new_feature_1}\n• {new_feature_2}\n\n🔧 Improvements\n• {improvement_1}\n• {improvement_2}\n\n🐛 Bug Fixes\n• {bug_fix_1}\n\n[Read the Full Changelog →]({release_notes_link})\n\nThank you for your continued feedback — it shapes everything we build.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "bug_fix_1",
+      "first_name",
+      "improvement_1",
+      "improvement_2",
+      "month_year",
+      "new_feature_1",
+      "new_feature_2",
+      "release_notes_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "product-update-release-notes-email-b",
+    "typeName": "Product Update / Release Notes",
+    "category": "Product & Features",
+    "channel": "email",
+    "variant": "B",
+    "subject": "What we shipped in {month_year} — {app_name} changelog",
+    "body": "Hey {first_name},\n\nAnother month, another batch of improvements built from your feedback!\n\n🚀 Highlights this month:\n• {new_feature_1} — {new_feature_1_detail}\n• {new_feature_2} — {new_feature_2_detail}\n\n[Full changelog & release notes →]({release_notes_link})\n\nHave a feature request? [Submit it here →]({feedback_link})\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "feedback_link",
+      "first_name",
+      "month_year",
+      "new_feature_1",
+      "new_feature_1_detail",
+      "new_feature_2",
+      "new_feature_2_detail",
+      "release_notes_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "product-update-release-notes-sms-a",
+    "typeName": "Product Update / Release Notes",
+    "category": "Product & Features",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name} just shipped new updates for {month_year}! See what's new: {release_notes_link}",
+    "variablesUsed": [
+      "app_name",
+      "month_year",
+      "release_notes_link"
+    ]
+  },
+  {
+    "key": "product-update-release-notes-sms-b",
+    "typeName": "Product Update / Release Notes",
+    "category": "Product & Features",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, {app_name} has been updated with new features and improvements. Check the changelog: {release_notes_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "release_notes_link"
+    ]
+  },
+  {
+    "key": "product-update-release-notes-push-a",
+    "typeName": "Product Update / Release Notes",
+    "category": "Product & Features",
+    "channel": "push",
+    "variant": "A",
+    "subject": "{app_name} Just Updated 🆕",
+    "body": "New features and improvements are live. Tap to see what changed this month.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "product-update-release-notes-push-b",
+    "typeName": "Product Update / Release Notes",
+    "category": "Product & Features",
+    "channel": "push",
+    "variant": "B",
+    "subject": "{month_year} Updates Are Here 📋",
+    "body": "See what {app_name} shipped this month — tap to read the changelog.",
+    "variablesUsed": [
+      "app_name",
+      "month_year"
+    ]
+  },
+  {
+    "key": "usage-limit-warning-email-a",
+    "typeName": "Usage Limit Warning",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "A",
+    "subject": "You've used {usage_percentage}% of your {app_name} {usage_type} allowance",
+    "body": "Hi {first_name},\n\nHeads up — you've used {current_usage} of your {usage_limit} monthly {usage_type} allowance on the {plan_name} plan. That's {usage_percentage}%.\n\nAt your current rate, you'll hit your limit around {estimated_limit_date}.\n\nOptions:\n• [Upgrade your plan for more {usage_type} →]({upgrade_link})\n• [View your usage breakdown →]({dashboard_link})\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "current_usage",
+      "dashboard_link",
+      "estimated_limit_date",
+      "first_name",
+      "plan_name",
+      "unsubscribe_link",
+      "upgrade_link",
+      "usage_limit",
+      "usage_percentage",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-warning-email-b",
+    "typeName": "Usage Limit Warning",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "B",
+    "subject": "⚠️ You're approaching your {app_name} {usage_type} limit",
+    "body": "Hey {first_name},\n\nYou're at {usage_percentage}% of your monthly {usage_type} limit ({current_usage} / {usage_limit}).\n\nDon't get caught off guard. Upgrading to {next_plan_name} gives you {next_plan_limit} {usage_type} and plenty of room to grow.\n\n[See Upgrade Options →]({upgrade_link})\n\nWant to understand your usage better? [Check your dashboard →]({dashboard_link})\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "current_usage",
+      "dashboard_link",
+      "first_name",
+      "next_plan_limit",
+      "next_plan_name",
+      "unsubscribe_link",
+      "upgrade_link",
+      "usage_limit",
+      "usage_percentage",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-warning-sms-a",
+    "typeName": "Usage Limit Warning",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: You've used {usage_percentage}% of your monthly {usage_type} limit. Consider upgrading: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "upgrade_link",
+      "usage_percentage",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-warning-sms-b",
+    "typeName": "Usage Limit Warning",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} {usage_type} usage is at {usage_percentage}% ({current_usage}/{usage_limit}). Upgrade to avoid disruption: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "current_usage",
+      "first_name",
+      "upgrade_link",
+      "usage_limit",
+      "usage_percentage",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-warning-push-a",
+    "typeName": "Usage Limit Warning",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Usage Limit Warning ⚠️",
+    "body": "You've used {usage_percentage}% of your {app_name} {usage_type} limit. Tap to upgrade.",
+    "variablesUsed": [
+      "app_name",
+      "usage_percentage",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-warning-push-b",
+    "typeName": "Usage Limit Warning",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "B",
+    "subject": "{usage_percentage}% of Your Limit Used",
+    "body": "Approaching your {app_name} {usage_type} cap. Tap to view your options.",
+    "variablesUsed": [
+      "app_name",
+      "usage_percentage",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-reached-email-a",
+    "typeName": "Usage Limit Reached",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "A",
+    "subject": "You've reached your {app_name} {usage_type} limit",
+    "body": "Hi {first_name},\n\nYou've reached your monthly {usage_type} limit of {usage_limit} on your {plan_name} plan.\n\nYour {usage_type} usage has been paused until {limit_reset_date}, or you can upgrade now to restore service immediately.\n\n[Upgrade Now to Continue →]({upgrade_link})\n\nUpgrading takes under 2 minutes and restores your service right away.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "limit_reset_date",
+      "plan_name",
+      "unsubscribe_link",
+      "upgrade_link",
+      "usage_limit",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-reached-email-b",
+    "typeName": "Usage Limit Reached",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "B",
+    "subject": "🚫 Usage limit reached — upgrade to keep going",
+    "body": "Hey {first_name},\n\nYou've hit the {usage_limit} {usage_type} cap on your {plan_name} plan.\n\nNo worries — upgrading to {next_plan_name} gives you {next_plan_limit} {usage_type} and takes just a minute.\n\n[Resume with {next_plan_name} →]({upgrade_link})\n\nPrefer to wait? Your limit resets on {limit_reset_date}.\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "limit_reset_date",
+      "next_plan_limit",
+      "next_plan_name",
+      "plan_name",
+      "unsubscribe_link",
+      "upgrade_link",
+      "usage_limit",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-reached-sms-a",
+    "typeName": "Usage Limit Reached",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: You've hit your {usage_type} limit. Upgrade now to restore service immediately: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "upgrade_link",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-reached-sms-b",
+    "typeName": "Usage Limit Reached",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} {usage_type} limit is reached. Service is paused. Upgrade to continue: {upgrade_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "upgrade_link",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-reached-push-a",
+    "typeName": "Usage Limit Reached",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Usage Limit Reached 🚫",
+    "body": "You've hit your {app_name} {usage_type} limit. Tap to upgrade and restore service now.",
+    "variablesUsed": [
+      "app_name",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "usage-limit-reached-push-b",
+    "typeName": "Usage Limit Reached",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Service Paused",
+    "body": "Your {app_name} {usage_type} limit is reached. Upgrade now or wait until {limit_reset_date}.",
+    "variablesUsed": [
+      "app_name",
+      "limit_reset_date",
+      "usage_type"
+    ]
+  },
+  {
+    "key": "re-engagement-win-back-email-a",
+    "typeName": "Re-engagement / Win-back",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "A",
+    "subject": "We miss you, {first_name} — here's what's new in {app_name}",
+    "body": "Hi {first_name},\n\nWe noticed you haven't logged into {app_name} in a while, and we miss having you around!\n\nHere's what's new since your last visit:\n• {update_1}\n• {update_2}\n• {update_3}\n\nAs a thank-you for coming back, we'd love to offer you {reengagement_offer}.\n\n[Claim Your Offer & Log In →]({offer_link})\n\nWe hope to see you soon,\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "offer_link",
+      "reengagement_offer",
+      "unsubscribe_link",
+      "update_1",
+      "update_2",
+      "update_3"
+    ]
+  },
+  {
+    "key": "re-engagement-win-back-email-b",
+    "typeName": "Re-engagement / Win-back",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "B",
+    "subject": "{first_name}, your {app_name} account has been quiet — a lot has changed",
+    "body": "Hey {first_name},\n\nIt's been {days_inactive} days since you last logged into {app_name}. In that time, a lot has happened:\n\n🆕 {update_1}\n🆕 {update_2}\n\nPop back in and see for yourself. We'll even sweeten the deal:\n\n{reengagement_offer} — [Claim It Here →]({offer_link})\n\nSee you soon,\n{app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "days_inactive",
+      "first_name",
+      "offer_link",
+      "reengagement_offer",
+      "unsubscribe_link",
+      "update_1",
+      "update_2"
+    ]
+  },
+  {
+    "key": "re-engagement-win-back-sms-a",
+    "typeName": "Re-engagement / Win-back",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{first_name}, it's been a while! Come back to {app_name} — we've made great improvements. Log in: {dashboard_link}",
+    "variablesUsed": [
+      "app_name",
+      "dashboard_link",
+      "first_name"
+    ]
+  },
+  {
+    "key": "re-engagement-win-back-sms-b",
+    "typeName": "Re-engagement / Win-back",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "Hey {first_name}! We miss you at {app_name}. See what's new + a special offer waiting for you: {offer_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "offer_link"
+    ]
+  },
+  {
+    "key": "re-engagement-win-back-push-a",
+    "typeName": "Re-engagement / Win-back",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "A",
+    "subject": "We Miss You, {first_name}! 👋",
+    "body": "You haven't been to {app_name} in a while. See what you've been missing.",
+    "variablesUsed": [
+      "app_name",
+      "first_name"
+    ]
+  },
+  {
+    "key": "re-engagement-win-back-push-b",
+    "typeName": "Re-engagement / Win-back",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Come Back & See What's New",
+    "body": "{app_name} has new features since your last visit. Tap to catch up.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "churn-prevention-email-a",
+    "typeName": "Churn Prevention",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Thinking about leaving {app_name}? Let us help first",
+    "body": "Hi {first_name},\n\nWe noticed some activity on your account that suggests you might be considering canceling your subscription.\n\nBefore you go, we'd love the chance to help. Our team can:\n• Troubleshoot any issues you're experiencing\n• Suggest a plan that better fits your needs and budget\n• Provide a dedicated onboarding session at no charge\n\n[Talk to Our Team →]({support_link})\n\nIf you'd still like to cancel, you can do so here: {cancel_link}\n\nWe appreciate the time you've spent with us.\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "cancel_link",
+      "first_name",
+      "support_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "churn-prevention-email-b",
+    "typeName": "Churn Prevention",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Can we make {app_name} work better for you?",
+    "body": "Hey {first_name},\n\nI noticed you might be having a tough time with {app_name} and wanted to reach out personally.\n\nI'd love to understand what's not working and make it right. Our team is available for a free 1:1 session to help you get real value from {app_name}.\n\n[Schedule a Free 30-Min Call →]({calendly_link})\n\nYou've put time into {app_name} — I want to make sure it's paying off for you.\n\n— {sender_name} from {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "calendly_link",
+      "first_name",
+      "sender_name",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "churn-prevention-sms-a",
+    "typeName": "Churn Prevention",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{first_name}, we want {app_name} to work for you. Talk to our team before you go: {support_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "support_link"
+    ]
+  },
+  {
+    "key": "churn-prevention-sms-b",
+    "typeName": "Churn Prevention",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "Hi {first_name}, we noticed you might be leaving {app_name}. Can we help? Free call: {calendly_link}",
+    "variablesUsed": [
+      "app_name",
+      "calendly_link",
+      "first_name"
+    ]
+  },
+  {
+    "key": "churn-prevention-push-a",
+    "typeName": "Churn Prevention",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Don't Go Yet, {first_name} 🤝",
+    "body": "We'd love to help before you cancel. Tap to chat with our support team.",
+    "variablesUsed": [
+      "first_name"
+    ]
+  },
+  {
+    "key": "churn-prevention-push-b",
+    "typeName": "Churn Prevention",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Let Us Make This Right",
+    "body": "Having trouble with {app_name}? Our team is ready to help you get more value.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "account-deactivation-warning-email-a",
+    "typeName": "Account Deactivation Warning",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Important: Your {app_name} account will be deactivated on {account_deactivation_date}",
+    "body": "Hi {first_name},\n\nThis is an important notice regarding your {app_name} account.\n\nDue to {deactivation_reason}, your account is scheduled to be deactivated on {account_deactivation_date}.\n\nTo keep your account active, please take the following action before that date:\n→ {action_required}\n\n[Take Action Now →]({action_link})\n\nIf you believe this is in error, please contact our support team immediately at {support_link}.\n\nThe {app_name} Team",
+    "variablesUsed": [
+      "account_deactivation_date",
+      "action_link",
+      "action_required",
+      "app_name",
+      "deactivation_reason",
+      "first_name",
+      "support_link"
+    ]
+  },
+  {
+    "key": "account-deactivation-warning-email-b",
+    "typeName": "Account Deactivation Warning",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "B",
+    "subject": "⚠️ Your {app_name} account will be deactivated in {days_until_deactivation} days",
+    "body": "Hey {first_name},\n\nUrgent notice: Your {app_name} account is set for deactivation on {account_deactivation_date} — that's {days_until_deactivation} days from now.\n\nReason: {deactivation_reason}\n\nTo prevent deactivation: {action_required}\n\n[Act Before {account_deactivation_date} →]({action_link})\n\nQuestions? Reply here or visit {support_link}.\n\n— {app_name}",
+    "variablesUsed": [
+      "account_deactivation_date",
+      "action_link",
+      "action_required",
+      "app_name",
+      "days_until_deactivation",
+      "deactivation_reason",
+      "first_name",
+      "support_link"
+    ]
+  },
+  {
+    "key": "account-deactivation-warning-sms-a",
+    "typeName": "Account Deactivation Warning",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your account will be deactivated on {account_deactivation_date}. Take action now: {action_link}",
+    "variablesUsed": [
+      "account_deactivation_date",
+      "action_link",
+      "app_name"
+    ]
+  },
+  {
+    "key": "account-deactivation-warning-sms-b",
+    "typeName": "Account Deactivation Warning",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} account deactivates in {days_until_deactivation} days. Prevent it here: {action_link}",
+    "variablesUsed": [
+      "action_link",
+      "app_name",
+      "days_until_deactivation",
+      "first_name"
+    ]
+  },
+  {
+    "key": "account-deactivation-warning-push-a",
+    "typeName": "Account Deactivation Warning",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Account Deactivation Warning ⚠️",
+    "body": "Your {app_name} account will be deactivated on {account_deactivation_date}. Tap to take action.",
+    "variablesUsed": [
+      "account_deactivation_date",
+      "app_name"
+    ]
+  },
+  {
+    "key": "account-deactivation-warning-push-b",
+    "typeName": "Account Deactivation Warning",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Action Required — {days_until_deactivation} Days Left",
+    "body": "{days_until_deactivation} days until your {app_name} account is deactivated. Tap to prevent it.",
+    "variablesUsed": [
+      "app_name",
+      "days_until_deactivation"
+    ]
+  },
+  {
+    "key": "account-deactivated-email-a",
+    "typeName": "Account Deactivated",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {app_name} account has been deactivated",
+    "body": "Hi {first_name},\n\nYour {app_name} account has been deactivated as of {deactivation_date}.\n\nReason: {deactivation_reason}\n\nYour data will be retained for {data_retention_days} days. To reactivate your account and recover your data, please act within that period.\n\n[Reactivate My Account →]({reactivation_link})\n\nThank you for having been an {app_name} customer.\n\nThe {app_name} Team",
+    "variablesUsed": [
+      "app_name",
+      "data_retention_days",
+      "deactivation_date",
+      "deactivation_reason",
+      "first_name",
+      "reactivation_link"
+    ]
+  },
+  {
+    "key": "account-deactivated-email-b",
+    "typeName": "Account Deactivated",
+    "category": "Account Management",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Account closed — here's what happens to your data",
+    "body": "Hey {first_name},\n\nYour {app_name} account was deactivated on {deactivation_date}. Here's what you should know:\n\n• Your data is stored for {data_retention_days} more days\n• You can reactivate within that window and pick up where you left off\n• After {data_retention_days} days, all data will be permanently deleted\n\n[Reactivate Before Your Data Is Gone →]({reactivation_link})\n\nWe hope our paths cross again.\n\n— {app_name}",
+    "variablesUsed": [
+      "app_name",
+      "data_retention_days",
+      "deactivation_date",
+      "first_name",
+      "reactivation_link"
+    ]
+  },
+  {
+    "key": "account-deactivated-sms-a",
+    "typeName": "Account Deactivated",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your account was deactivated on {deactivation_date}. Data stored for {data_retention_days} days. Reactivate: {reactivation_link}",
+    "variablesUsed": [
+      "app_name",
+      "data_retention_days",
+      "deactivation_date",
+      "reactivation_link"
+    ]
+  },
+  {
+    "key": "account-deactivated-sms-b",
+    "typeName": "Account Deactivated",
+    "category": "Account Management",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} account is deactivated. Recover it within {data_retention_days} days: {reactivation_link}",
+    "variablesUsed": [
+      "app_name",
+      "data_retention_days",
+      "first_name",
+      "reactivation_link"
+    ]
+  },
+  {
+    "key": "account-deactivated-push-a",
+    "typeName": "Account Deactivated",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Account Deactivated",
+    "body": "Your {app_name} account has been deactivated. Tap to reactivate or download your data.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "account-deactivated-push-b",
+    "typeName": "Account Deactivated",
+    "category": "Account Management",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Account Closed",
+    "body": "Your {app_name} data is saved for {data_retention_days} days. Tap to reactivate your account.",
+    "variablesUsed": [
+      "app_name",
+      "data_retention_days"
+    ]
+  },
+  {
+    "key": "security-alert-new-login-email-a",
+    "typeName": "Security Alert / New Login",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "A",
+    "subject": "New sign-in to your {app_name} account",
+    "body": "Hi {first_name},\n\nWe detected a new sign-in to your {app_name} account.\n\nSign-in Details:\n• Time: {login_time}\n• Device: {login_device}\n• Location: {login_location}\n• IP Address: {login_ip}\n\nIf this was you, no action is needed.\n\nIf this wasn't you, [secure your account immediately →]({security_link}) — change your password and enable two-factor authentication.\n\nThe {app_name} Security Team",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "login_device",
+      "login_ip",
+      "login_location",
+      "login_time",
+      "security_link"
+    ]
+  },
+  {
+    "key": "security-alert-new-login-email-b",
+    "typeName": "Security Alert / New Login",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "B",
+    "subject": "🔐 Security alert: New sign-in from {login_location}",
+    "body": "Hey {first_name},\n\nSomeone signed into your {app_name} account from a new device or location.\n\n📍 {login_location} | 💻 {login_device} | 🕐 {login_time}\n\nWas this you? [Confirm it was me →]({confirm_login_link})\n\nWasn't you? [Secure my account now →]({security_link})\n\n— {app_name} Security Team",
+    "variablesUsed": [
+      "app_name",
+      "confirm_login_link",
+      "first_name",
+      "login_device",
+      "login_location",
+      "login_time",
+      "security_link"
+    ]
+  },
+  {
+    "key": "security-alert-new-login-sms-a",
+    "typeName": "Security Alert / New Login",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name} Security: New login from {login_location} on {login_device} at {login_time}. Not you? Secure account: {security_link}",
+    "variablesUsed": [
+      "app_name",
+      "login_device",
+      "login_location",
+      "login_time",
+      "security_link"
+    ]
+  },
+  {
+    "key": "security-alert-new-login-sms-b",
+    "typeName": "Security Alert / New Login",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, new sign-in to your {app_name} account from {login_device} ({login_location}). Wasn't you? Act here: {security_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "login_device",
+      "login_location",
+      "security_link"
+    ]
+  },
+  {
+    "key": "security-alert-new-login-push-a",
+    "typeName": "Security Alert / New Login",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "A",
+    "subject": "New Login Detected 🔐",
+    "body": "Someone signed into your {app_name} account from {login_location}. Tap to review.",
+    "variablesUsed": [
+      "app_name",
+      "login_location"
+    ]
+  },
+  {
+    "key": "security-alert-new-login-push-b",
+    "typeName": "Security Alert / New Login",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Security Alert",
+    "body": "New sign-in from {login_device} at {login_time}. Tap to confirm or secure your {app_name} account.",
+    "variablesUsed": [
+      "app_name",
+      "login_device",
+      "login_time"
+    ]
+  },
+  {
+    "key": "two-factor-authentication-otp-email-a",
+    "typeName": "Two-Factor Authentication (OTP)",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {app_name} verification code: {otp_code}",
+    "body": "Hi {first_name},\n\nYour one-time verification code for {app_name} is:\n\n{otp_code}\n\nThis code expires in {otp_expiry_minutes} minutes. Do not share this code with anyone — {app_name} will never ask for it.\n\nIf you didn't request this code, please [secure your account →]({security_link}).\n\nThe {app_name} Security Team",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "otp_code",
+      "otp_expiry_minutes",
+      "security_link"
+    ]
+  },
+  {
+    "key": "two-factor-authentication-otp-email-b",
+    "typeName": "Two-Factor Authentication (OTP)",
+    "category": "Authentication & Security",
+    "channel": "email",
+    "variant": "B",
+    "subject": "🔑 {app_name} login code — expires in {otp_expiry_minutes} minutes",
+    "body": "Hi {first_name},\n\nHere's your one-time login code for {app_name}:\n\n{otp_code}\n\nEnter this code within {otp_expiry_minutes} minutes.\n\n⚠️ Never share this code with anyone. {app_name} support will never ask for it.\n\nNot trying to log in? [Secure your account →]({security_link})\n\n— {app_name}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "otp_code",
+      "otp_expiry_minutes",
+      "security_link"
+    ]
+  },
+  {
+    "key": "two-factor-authentication-otp-sms-a",
+    "typeName": "Two-Factor Authentication (OTP)",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your verification code is {otp_code}. Expires in {otp_expiry_minutes} minutes. Do not share this code.",
+    "variablesUsed": [
+      "app_name",
+      "otp_code",
+      "otp_expiry_minutes"
+    ]
+  },
+  {
+    "key": "two-factor-authentication-otp-sms-b",
+    "typeName": "Two-Factor Authentication (OTP)",
+    "category": "Authentication & Security",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "Your {app_name} code: {otp_code} (expires in {otp_expiry_minutes} min). Didn't request this? Secure your account immediately.",
+    "variablesUsed": [
+      "app_name",
+      "otp_code",
+      "otp_expiry_minutes"
+    ]
+  },
+  {
+    "key": "two-factor-authentication-otp-push-a",
+    "typeName": "Two-Factor Authentication (OTP)",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Your Verification Code 🔑",
+    "body": "{otp_code} — Tap to copy. Expires in {otp_expiry_minutes} minutes.",
+    "variablesUsed": [
+      "otp_code",
+      "otp_expiry_minutes"
+    ]
+  },
+  {
+    "key": "two-factor-authentication-otp-push-b",
+    "typeName": "Two-Factor Authentication (OTP)",
+    "category": "Authentication & Security",
+    "channel": "push",
+    "variant": "B",
+    "subject": "{app_name} Login Code",
+    "body": "Your one-time code is {otp_code}. Valid for {otp_expiry_minutes} minutes only.",
+    "variablesUsed": [
+      "app_name",
+      "otp_code",
+      "otp_expiry_minutes"
+    ]
+  },
+  {
+    "key": "team-member-invitation-email-a",
+    "typeName": "Team Member Invitation",
+    "category": "Team & Collaboration",
+    "channel": "email",
+    "variant": "A",
+    "subject": "{inviter_name} has invited you to join {user_company} on {app_name}",
+    "body": "Hi {first_name},\n\n{inviter_name} has invited you to join the {user_company} workspace on {app_name}.\n\n{app_name} helps teams {value_proposition}.\n\n[Accept Invitation →]({invite_link})\n\nThis invitation expires in {invite_expiry_days} days. If you have questions, contact {inviter_name} at {inviter_email}.\n\nThe {app_name} Team",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "invite_expiry_days",
+      "invite_link",
+      "inviter_email",
+      "inviter_name",
+      "user_company",
+      "value_proposition"
+    ]
+  },
+  {
+    "key": "team-member-invitation-email-b",
+    "typeName": "Team Member Invitation",
+    "category": "Team & Collaboration",
+    "channel": "email",
+    "variant": "B",
+    "subject": "You're invited! Join {inviter_name} on {app_name}",
+    "body": "Hey {first_name},\n\nGood news — {inviter_name} wants you on their {app_name} team.\n\n{app_name} is where {user_company} collaborates on {value_proposition}.\n\n[Join the Team →]({invite_link})\n\n⏰ Invitation expires in {invite_expiry_days} days.\n\nSee you on the other side!\n— {app_name}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "invite_expiry_days",
+      "invite_link",
+      "inviter_name",
+      "user_company",
+      "value_proposition"
+    ]
+  },
+  {
+    "key": "team-member-invitation-sms-a",
+    "typeName": "Team Member Invitation",
+    "category": "Team & Collaboration",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{inviter_name} invited you to {user_company}'s {app_name} workspace. Accept here: {invite_link} (expires in {invite_expiry_days} days)",
+    "variablesUsed": [
+      "app_name",
+      "invite_expiry_days",
+      "invite_link",
+      "inviter_name",
+      "user_company"
+    ]
+  },
+  {
+    "key": "team-member-invitation-sms-b",
+    "typeName": "Team Member Invitation",
+    "category": "Team & Collaboration",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "You're invited! Join {inviter_name} on {app_name}. Accept your invite: {invite_link}",
+    "variablesUsed": [
+      "app_name",
+      "invite_link",
+      "inviter_name"
+    ]
+  },
+  {
+    "key": "team-member-invitation-push-a",
+    "typeName": "Team Member Invitation",
+    "category": "Team & Collaboration",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Team Invitation 👥",
+    "body": "{inviter_name} invited you to join {user_company} on {app_name}. Tap to accept.",
+    "variablesUsed": [
+      "app_name",
+      "inviter_name",
+      "user_company"
+    ]
+  },
+  {
+    "key": "team-member-invitation-push-b",
+    "typeName": "Team Member Invitation",
+    "category": "Team & Collaboration",
+    "channel": "push",
+    "variant": "B",
+    "subject": "You're Invited!",
+    "body": "{inviter_name} wants you on their {app_name} team. Tap to join {user_company}.",
+    "variablesUsed": [
+      "app_name",
+      "inviter_name",
+      "user_company"
+    ]
+  },
+  {
+    "key": "referral-program-email-a",
+    "typeName": "Referral Program",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Share {app_name} and earn {referral_reward} per referral",
+    "body": "Hi {first_name},\n\nLove {app_name}? Tell your friends and earn {referral_reward} for every person who signs up and subscribes using your unique referral link!\n\nYour referral link: {referral_link}\nYour referral code: {referral_code}\n\nFor every friend who subscribes:\n• You earn: {referral_reward}\n• They get: {referee_discount} off their first payment\n\n[Start Referring →]({referral_dashboard_link})\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "referee_discount",
+      "referral_code",
+      "referral_dashboard_link",
+      "referral_link",
+      "referral_reward",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "referral-program-email-b",
+    "typeName": "Referral Program",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "B",
+    "subject": "🎁 Earn {referral_reward} for every friend you send to {app_name}",
+    "body": "Hey {first_name},\n\nHere's an easy way to earn: share {app_name} with friends and colleagues. For every person who subscribes using your link, you'll earn {referral_reward}. They'll receive {referee_discount} off their first payment.\n\nYour personal link: {referral_link}\n\n[Share & Start Earning →]({referral_dashboard_link})\n\nNo limit on referrals — earn as much as you'd like!\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "referee_discount",
+      "referral_dashboard_link",
+      "referral_link",
+      "referral_reward",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "referral-program-sms-a",
+    "typeName": "Referral Program",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Refer friends and earn {referral_reward} per signup! Your link: {referral_link}",
+    "variablesUsed": [
+      "app_name",
+      "referral_link",
+      "referral_reward"
+    ]
+  },
+  {
+    "key": "referral-program-sms-b",
+    "typeName": "Referral Program",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, share {app_name} and earn {referral_reward} for every friend who joins: {referral_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "referral_link",
+      "referral_reward"
+    ]
+  },
+  {
+    "key": "referral-program-push-a",
+    "typeName": "Referral Program",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Earn {referral_reward} Per Referral 🎁",
+    "body": "Share your {app_name} referral link and earn rewards for every friend who subscribes.",
+    "variablesUsed": [
+      "app_name",
+      "referral_reward"
+    ]
+  },
+  {
+    "key": "referral-program-push-b",
+    "typeName": "Referral Program",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Refer Friends, Earn Rewards",
+    "body": "Get {referral_reward} for every friend who joins {app_name}. Tap to get your unique link.",
+    "variablesUsed": [
+      "app_name",
+      "referral_reward"
+    ]
+  },
+  {
+    "key": "nps-feedback-survey-email-a",
+    "typeName": "NPS / Feedback Survey",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "A",
+    "subject": "{first_name}, how likely are you to recommend {app_name}? (60 sec)",
+    "body": "Hi {first_name},\n\nYou've been using {app_name} for {days_as_customer} days, and we'd love your honest feedback!\n\nOn a scale of 0–10, how likely are you to recommend {app_name} to a friend or colleague?\n\n[Give My Rating →]({survey_link})\n\nThis takes less than 60 seconds, and your response directly shapes what we build next. Every answer is read by our team.\n\nThank you,\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "days_as_customer",
+      "first_name",
+      "survey_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "nps-feedback-survey-email-b",
+    "typeName": "NPS / Feedback Survey",
+    "category": "Engagement & Retention",
+    "channel": "email",
+    "variant": "B",
+    "subject": "Quick question for you — how are we doing? (1 minute)",
+    "body": "Hey {first_name},\n\nWe care deeply about your {app_name} experience and want to make it even better.\n\nMind sharing your honest feedback? It takes just 60 seconds and makes a real difference.\n\n[Take the Survey →]({survey_link})\n\nEvery response is read by our team personally. Your input genuinely shapes the product.\n\n— {sender_name} from {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "sender_name",
+      "survey_link",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "nps-feedback-survey-sms-a",
+    "typeName": "NPS / Feedback Survey",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: How likely are you to recommend us? 60-second survey: {survey_link} — Your feedback shapes our product.",
+    "variablesUsed": [
+      "app_name",
+      "survey_link"
+    ]
+  },
+  {
+    "key": "nps-feedback-survey-sms-b",
+    "typeName": "NPS / Feedback Survey",
+    "category": "Engagement & Retention",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, quick question about {app_name}: {survey_link} — Takes 60 seconds. We read every response.",
+    "variablesUsed": [
+      "app_name",
+      "first_name",
+      "survey_link"
+    ]
+  },
+  {
+    "key": "nps-feedback-survey-push-a",
+    "typeName": "NPS / Feedback Survey",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "A",
+    "subject": "How Are We Doing? 📊",
+    "body": "Quick 60-second survey about your {app_name} experience. Your feedback matters.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "nps-feedback-survey-push-b",
+    "typeName": "NPS / Feedback Survey",
+    "category": "Engagement & Retention",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Got a Minute?",
+    "body": "Tell us what you think of {app_name}. Tap to take a 1-minute survey.",
+    "variablesUsed": [
+      "app_name"
+    ]
+  },
+  {
+    "key": "renewal-reminder-email-a",
+    "typeName": "Renewal Reminder",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "A",
+    "subject": "Your {app_name} subscription renews in {renewal_days} days",
+    "body": "Hi {first_name},\n\nJust a reminder that your {app_name} {plan_name} subscription will automatically renew on {renewal_date} for {renewal_amount}.\n\nRenewal Summary:\n• Plan: {plan_name}\n• Amount: {renewal_amount}\n• Renewal Date: {renewal_date}\n• Payment Method: Card ending in {payment_method_last4}\n\n[Manage My Subscription →]({billing_link})\n\nIf you need to make changes, please do so before {renewal_date}. Otherwise, no action is needed.\n\nThank you for being a loyal {app_name} customer!\n\nThe {app_name} Team\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_link",
+      "first_name",
+      "payment_method_last4",
+      "plan_name",
+      "renewal_amount",
+      "renewal_date",
+      "renewal_days",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "renewal-reminder-email-b",
+    "typeName": "Renewal Reminder",
+    "category": "Billing & Payments",
+    "channel": "email",
+    "variant": "B",
+    "subject": "⏰ Heads up: {app_name} renews on {renewal_date} — {renewal_amount}",
+    "body": "Hey {first_name},\n\nYour {app_name} subscription renews in {renewal_days} days.\n\n📅 {renewal_date} | 💳 {renewal_amount} | 📦 {plan_name} plan\n\nNeed to update your payment method or change your plan before renewal? [Do it here →]({billing_link})\n\nOtherwise, no action is needed — your subscription renews automatically and your access continues uninterrupted.\n\n— {app_name}\n\n{unsubscribe_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_link",
+      "first_name",
+      "plan_name",
+      "renewal_amount",
+      "renewal_date",
+      "renewal_days",
+      "unsubscribe_link"
+    ]
+  },
+  {
+    "key": "renewal-reminder-sms-a",
+    "typeName": "Renewal Reminder",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "A",
+    "subject": null,
+    "body": "{app_name}: Your {plan_name} plan renews on {renewal_date} for {renewal_amount}. Manage billing: {billing_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_link",
+      "plan_name",
+      "renewal_amount",
+      "renewal_date"
+    ]
+  },
+  {
+    "key": "renewal-reminder-sms-b",
+    "typeName": "Renewal Reminder",
+    "category": "Billing & Payments",
+    "channel": "sms",
+    "variant": "B",
+    "subject": null,
+    "body": "{first_name}, your {app_name} subscription renews in {renewal_days} days ({renewal_date}) for {renewal_amount}. Update billing: {billing_link}",
+    "variablesUsed": [
+      "app_name",
+      "billing_link",
+      "first_name",
+      "renewal_amount",
+      "renewal_date",
+      "renewal_days"
+    ]
+  },
+  {
+    "key": "renewal-reminder-push-a",
+    "typeName": "Renewal Reminder",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "A",
+    "subject": "Renewal in {renewal_days} Days ⏰",
+    "body": "Your {app_name} {plan_name} subscription renews on {renewal_date} for {renewal_amount}.",
+    "variablesUsed": [
+      "app_name",
+      "plan_name",
+      "renewal_amount",
+      "renewal_date",
+      "renewal_days"
+    ]
+  },
+  {
+    "key": "renewal-reminder-push-b",
+    "typeName": "Renewal Reminder",
+    "category": "Billing & Payments",
+    "channel": "push",
+    "variant": "B",
+    "subject": "Subscription Renewal Reminder",
+    "body": "{renewal_amount} charge coming on {renewal_date}. Tap to manage your {app_name} subscription.",
+    "variablesUsed": [
+      "app_name",
+      "renewal_amount",
+      "renewal_date"
+    ]
+  }
+]

@@ -18,6 +18,8 @@ import type {
   SessionListItem,
   JobRole,
   BankQuestion,
+  CommunicationTemplate,
+  CommunicationSend,
 } from "../types.js";
 
 // Prisma-backed store, replacing the flat-JSON-file version used through
@@ -773,6 +775,145 @@ export async function getExperimentConversionCounts(
   return rows.map((r) => ({ variant: r.variant, goal: r.goal, count: r._count._all }));
 }
 
+// ---- End-user communications ----
+
+function mapCommunicationTemplate(row: {
+  id: string;
+  key: string;
+  typeName: string;
+  category: string;
+  channel: string;
+  variant: string;
+  subject: string | null;
+  body: string;
+  variablesUsed: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}): CommunicationTemplate {
+  return {
+    id: row.id,
+    key: row.key,
+    typeName: row.typeName,
+    category: row.category,
+    channel: row.channel as CommunicationTemplate["channel"],
+    variant: row.variant,
+    subject: row.subject ?? undefined,
+    body: row.body,
+    variablesUsed: row.variablesUsed,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/** Upserts by `key` — used both by the one-time CSV seed and by any future admin edit of a template. */
+export async function upsertCommunicationTemplate(params: {
+  key: string;
+  typeName: string;
+  category: string;
+  channel: CommunicationTemplate["channel"];
+  variant: string;
+  subject?: string;
+  body: string;
+  variablesUsed: string[];
+}): Promise<CommunicationTemplate> {
+  const row = await prisma.communicationTemplate.upsert({
+    where: { key: params.key },
+    update: {
+      typeName: params.typeName,
+      category: params.category,
+      channel: params.channel,
+      variant: params.variant,
+      subject: params.subject,
+      body: params.body,
+      variablesUsed: params.variablesUsed,
+    },
+    create: params,
+  });
+  return mapCommunicationTemplate(row);
+}
+
+export async function listCommunicationTemplates(): Promise<CommunicationTemplate[]> {
+  const rows = await prisma.communicationTemplate.findMany({
+    orderBy: [{ category: "asc" }, { typeName: "asc" }, { channel: "asc" }, { variant: "asc" }],
+  });
+  return rows.map(mapCommunicationTemplate);
+}
+
+export async function getCommunicationTemplateById(id: string): Promise<CommunicationTemplate | undefined> {
+  const row = await prisma.communicationTemplate.findUnique({ where: { id } });
+  return row ? mapCommunicationTemplate(row) : undefined;
+}
+
+function mapCommunicationSend(row: {
+  id: string;
+  templateId: string;
+  userId: string;
+  channel: string;
+  variant: string;
+  status: string;
+  renderedSubject: string | null;
+  renderedBody: string;
+  error: string | null;
+  sentByUserId: string;
+  batchId: string;
+  createdAt: Date;
+}): CommunicationSend {
+  return {
+    id: row.id,
+    templateId: row.templateId,
+    userId: row.userId,
+    channel: row.channel as CommunicationSend["channel"],
+    variant: row.variant,
+    status: row.status as CommunicationSend["status"],
+    renderedSubject: row.renderedSubject ?? undefined,
+    renderedBody: row.renderedBody,
+    error: row.error ?? undefined,
+    sentByUserId: row.sentByUserId,
+    batchId: row.batchId,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function createCommunicationSends(
+  sends: Array<{
+    templateId: string;
+    userId: string;
+    channel: CommunicationSend["channel"];
+    variant: string;
+    status: CommunicationSend["status"];
+    renderedSubject?: string;
+    renderedBody: string;
+    error?: string;
+    sentByUserId: string;
+    batchId: string;
+  }>,
+): Promise<void> {
+  if (sends.length === 0) return;
+  await prisma.communicationSend.createMany({ data: sends });
+}
+
+/** Most recent sends first — the admin-facing send history/audit log. */
+export async function listCommunicationSends(limit = 100): Promise<CommunicationSend[]> {
+  const rows = await prisma.communicationSend.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return rows.map(mapCommunicationSend);
+}
+
+/** Sent-count per variant for one lifecycle event + channel — the A/B "who got what" tally shown in the composer. */
+export async function getCommunicationVariantCounts(
+  typeName: string,
+  channel: CommunicationTemplate["channel"],
+): Promise<{ variant: string; status: CommunicationSend["status"]; count: number }[]> {
+  const rows = await prisma.communicationSend.groupBy({
+    by: ["variant", "status"],
+    where: { template: { typeName, channel } },
+    _count: { _all: true },
+  });
+  return rows.map((r) => ({ variant: r.variant, status: r.status as CommunicationSend["status"], count: r._count._all }));
+}
+
 // Kept as a namespace object too, for call sites that prefer `store.method()`
 // over named imports — both work identically.
 export const store = {
@@ -817,4 +958,10 @@ export const store = {
   recordExperimentConversion,
   getExperimentExposureCounts,
   getExperimentConversionCounts,
+  upsertCommunicationTemplate,
+  listCommunicationTemplates,
+  getCommunicationTemplateById,
+  createCommunicationSends,
+  listCommunicationSends,
+  getCommunicationVariantCounts,
 };

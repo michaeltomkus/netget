@@ -309,6 +309,42 @@ pill radius scale, no-gradient rule) supplied as a design handoff doc.
   name (so the handful of call sites that reference it didn't need touching) but is
   now bound to a flat accent color, not a `linear-gradient(...)`.
 
+**End-user communications**: an admin-facing way to compose and send templated,
+multi-channel, A/B-variant messages to end users — a distinct, explicitly requested
+capability from the rest of the admin dashboard's read-only metrics posture (see the
+scope note in `routes/admin.ts`): this composes/sends messages, it still doesn't touch
+any individual account or billing state.
+
+- **Template library, seeded not invented.** `backend/src/services/communications/seedTemplates.data.json`
+  holds 150 reference templates — 25 lifecycle events (Welcome, Email Verification,
+  Payment Failed, ...) across 7 categories x 3 channels (email/sms/push) x 2 A/B copy
+  variants — derived from a supplied lifecycle-communications reference set. `POST
+  /api/admin/communications/templates/seed` upserts them by a stable `key`, so it's
+  idempotent and safe to re-run. An admin composes from this library; nothing here
+  generates new copy on its own.
+- **`{variable}` templating.** `services/communications/template.ts` extracts and
+  renders `{first_name}`-style tokens; an unresolved token is left visible in the
+  rendered output rather than silently blanked, so a typo'd merge field is obvious
+  in the send history instead of shipping a blank.
+- **A/B split is deterministic, not per-send-random.** When a lifecycle event has two
+  variants for a channel, `services/communications/send.ts` buckets each recipient
+  with the same FNV-1a-hash approach as the page-level A/B infrastructure above
+  (`experiments/assignVariant.ts`) — re-running a send against the same audience
+  reproduces the same split rather than reshuffling who got which copy.
+- **Provider-agnostic, graceful-degradation delivery.** Each channel is one plain
+  HTTPS POST to a `{CHANNEL}_PROVIDER_WEBHOOK_URL` (see `.env.example`) — no vendor
+  SDK, same "avoid SDK weight" choice already made for Azure TTS. Without a URL
+  configured, a send still renders and logs every recipient's message as
+  `skipped_no_provider` rather than failing — the whole feature is usable and
+  testable (composer, audience targeting, A/B split, history) with zero messaging
+  infrastructure wired up.
+- **Full send audit log, not fire-and-forget.** Every attempt — `sent`,
+  `skipped_no_provider`, or `failed` (with its error) — is written to
+  `CommunicationSend`, shown in the admin composer's history table and queryable per
+  (lifecycle event, channel) for a sent-count-per-variant tally.
+- **Audience targeting** is intentionally small to start: all users, active
+  subscribers only, or a single user by email — not a full segmentation builder.
+
 **Operational hardening**: rate limiting (`express-rate-limit`), a real automated test
 suite, CI, and error monitoring — the highest-priority engineering/ops gaps once this
 stopped being a toy.

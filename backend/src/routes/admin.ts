@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { communicationSendLimiter } from "../middleware/rateLimit.js";
 import * as store from "../db/store.js";
 import { getPlanByPriceId, getStripeClient, isStripeConfigured } from "../services/stripe.js";
 import { EXPERIMENTS, getExperiment } from "../services/experiments.js";
-import type { ExperimentResults } from "../types.js";
+import { seedCommunicationTemplates } from "../services/communications/seedTemplates.js";
+import { sendCommunication, type AudienceSelector } from "../services/communications/send.js";
+import { isChannelConfigured } from "../services/communications/providers.js";
+import type { CommunicationChannel, ExperimentResults } from "../types.js";
 
 export const adminRouter = Router();
 
@@ -17,8 +21,12 @@ adminRouter.use((req, res, next) => {
   next();
 });
 
-// Revenue/usage metrics only — no user-management write actions (manual
-// comp/grant, cancel/refund) are exposed here, by explicit scope decision.
+// Revenue/usage metrics only — no *account* write actions (manual
+// comp/grant, cancel/refund on an individual user) are exposed here, by
+// explicit scope decision; use the Stripe dashboard directly for that. The
+// end-user communications endpoints below are a distinct, separately
+// requested capability — composing/sending templated messages to users,
+// not editing their accounts — so they don't reverse that decision.
 adminRouter.get("/metrics", async (_req, res) => {
   const now = new Date();
   const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -93,3 +101,90 @@ adminRouter.get("/experiments/:key/results", async (req, res) => {
   };
   res.json(results);
 });
+
+// --- End-user communications ---------------------------------------
+//
+// Compose/send templated, multi-channel (email/sms/push), A/B-variant
+// messages to end users. The template library is seeded from a reference
+// set of lifecycle communications (see services/communications/seedTemplates.ts)
+// grouped by `typeName` (the lifecycle event, e.g. "Welcome / Onboarding")
+// x `channel` x `variant` — the composer picks a (typeName, channel) pair
+// and an audience, and sends split across whichever variants exist for it.
+
+const CHANNELS: CommunicationChannel[] = ["email", "sms", "push"];
+
+adminRouter.get("/communications/templates", async (_req, res) => {
+  const templates = await store.listCommunicationTemplates();
+  res.json({
+    templates,
+    channelStatus: Object.fromEntries(CHANNELS.map((c) => [c, isChannelConfigured(c)])),
+  });
+});
+
+// Idempotent — upserts by each template's stable key, so this is safe to
+// call again after the reference set changes, and safe for an admin to
+// click more than once by accident.
+adminRouter.post("/communications/templates/seed", async (_req, res) => {
+  const count = await seedCommunicationTemplates();
+  res.json({ seeded: count });
+});
+
+adminRouter.get("/communications/history", async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 500);
+  const sends = await store.listCommunicationSends(limit);
+  res.json({ sends });
+});
+
+adminRouter.get("/communications/variant-counts", async (req, res) => {
+  const typeName = String(req.query.typeName ?? "");
+  const channel = String(req.query.channel ?? "") as CommunicationChannel;
+  if (!typeName || !CHANNELS.includes(channel)) {
+    return res.status(400).json({ error: "typeName and a valid channel are required" });
+  }
+  const counts = await store.getCommunicationVariantCounts(typeName, channel);
+  res.json({ counts });
+});
+
+adminRouter.post("/communications/send", communicationSendLimiter, async (req, res) => {
+  const { typeName, channel, audience, extraVars } = req.body ?? {};
+
+  if (typeof typeName !== "string" || !typeName.trim()) {
+    return res.status(400).json({ error: "typeName is required" });
+  }
+  if (!CHANNELS.includes(channel)) {
+    return res.status(400).json({ error: "channel must be one of email, sms, push" });
+  }
+  const resolvedAudience = parseAudience(audience);
+  if (!resolvedAudience) {
+    return res.status(400).json({
+      error: 'audience must be { kind: "all" }, { kind: "active_subscribers" }, or { kind: "single", email }',
+    });
+  }
+  if (extraVars !== undefined && (typeof extraVars !== "object" || extraVars === null || Array.isArray(extraVars))) {
+    return res.status(400).json({ error: "extraVars must be an object of string values" });
+  }
+
+  try {
+    const summary = await sendCommunication({
+      typeName,
+      channel,
+      audience: resolvedAudience,
+      extraVars,
+      sentByUserId: req.appUser!.id,
+    });
+    res.json(summary);
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to send communication" });
+  }
+});
+
+function parseAudience(input: unknown): AudienceSelector | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const kind = (input as { kind?: unknown }).kind;
+  if (kind === "all" || kind === "active_subscribers") return { kind };
+  if (kind === "single") {
+    const email = (input as { email?: unknown }).email;
+    if (typeof email === "string" && email.trim()) return { kind: "single", email };
+  }
+  return undefined;
+}

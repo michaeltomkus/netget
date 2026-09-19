@@ -284,3 +284,49 @@ export interface ExperimentResults {
   /** Unique-subject conversion count per (variant, goal). */
   conversions: { variant: string; goal: string; count: number }[];
 }
+
+// End-user communications — admin-authored, templated, multi-channel
+// messages, optionally split A/B across a target audience. See
+// services/communications/.
+
+export type CommunicationChannel = "email" | "sms" | "push";
+export type CommunicationSendStatus = "sent" | "skipped_no_provider" | "failed";
+
+export interface CommunicationTemplate {
+  id: string;
+  key: string;
+  typeName: string;
+  category: string;
+  channel: CommunicationChannel;
+  variant: string;
+  subject?: string;
+  body: string;
+  variablesUsed: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunicationSend {
+  id: string;
+  templateId: string;
+  userId: string;
+  channel: CommunicationChannel;
+  variant: string;
+  status: CommunicationSendStatus;
+  renderedSubject?: string;
+  renderedBody: string;
+  error?: string;
+  sentByUserId: string;
+  batchId: string;
+  createdAt: string;
+}
+
+/** One recipient's outcome within a POST /api/admin/communications/send call. */
+export interface CommunicationSendResult {
+  userId: string;
+  email: string;
+  templateId: string;
+  variant: string;
+  status: CommunicationSendStatus;
+  error?: string;
+}

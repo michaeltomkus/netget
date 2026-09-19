@@ -72,3 +72,15 @@ export const experimentEventLimiter = rateLimit({
   keyGenerator: userOrIpKey,
   message: { error: "Too many requests." },
 });
+
+// Admin-triggered end-user communication sends (routes/admin.ts) — already
+// gated behind requireAuth()+admin, so this is a backstop against a
+// scripted or accidental repeat-click batch send, not the primary control.
+export const communicationSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+  message: { error: "Too many communication sends — please wait a few minutes and try again." },
+});

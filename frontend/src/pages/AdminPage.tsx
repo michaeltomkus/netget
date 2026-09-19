@@ -1,7 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { getAdminExperiments, getAdminMetrics, getExperimentResults } from "../api/client";
-import type { AdminMetrics, ExperimentResults } from "../api/types";
+import {
+  getAdminExperiments,
+  getAdminMetrics,
+  getCommunicationHistory,
+  getCommunicationTemplates,
+  getExperimentResults,
+  seedCommunicationTemplates,
+  sendCommunication,
+} from "../api/client";
+import type {
+  AdminMetrics,
+  AudienceSelector,
+  CommunicationChannel,
+  CommunicationSend,
+  CommunicationSendSummary,
+  CommunicationTemplate,
+  ExperimentResults,
+} from "../api/types";
 import { useAppUser } from "../hooks/useAppUser";
 
 function formatCents(cents: number | undefined): string {
@@ -76,6 +92,267 @@ function ExperimentResultsSection() {
   );
 }
 
+const CHANNEL_LABELS: Record<CommunicationChannel, string> = { email: "Email", sms: "SMS", push: "Push" };
+
+/**
+ * Compose/send templated, multi-channel, A/B-variant messages to end
+ * users — a distinct, explicitly requested capability from the rest of
+ * this dashboard's read-only metrics posture (see admin.ts). Templates are
+ * seeded from a reference library grouped by lifecycle event (`typeName`)
+ * x channel x variant; sending picks one (typeName, channel) pair and an
+ * audience, and splits recipients across whatever variants exist for it.
+ */
+function CommunicationsSection() {
+  const [templates, setTemplates] = useState<CommunicationTemplate[] | null>(null);
+  const [channelStatus, setChannelStatus] = useState<Record<CommunicationChannel, boolean> | null>(null);
+  const [history, setHistory] = useState<CommunicationSend[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  const [typeName, setTypeName] = useState("");
+  const [channel, setChannel] = useState<CommunicationChannel>("email");
+  const [audienceKind, setAudienceKind] = useState<AudienceSelector["kind"]>("all");
+  const [audienceEmail, setAudienceEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendSummary, setSendSummary] = useState<CommunicationSendSummary | null>(null);
+
+  function loadAll() {
+    Promise.all([getCommunicationTemplates(), getCommunicationHistory(50)])
+      .then(([t, h]) => {
+        setTemplates(t.templates);
+        setChannelStatus(t.channelStatus);
+        setHistory(h.sends);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }
+
+  useEffect(loadAll, []);
+
+  // Lifecycle event -> category, and which channels have copy for it.
+  const eventsByCategory = useMemo(() => {
+    if (!templates) return new Map<string, Map<string, Set<CommunicationChannel>>>();
+    const byCategory = new Map<string, Map<string, Set<CommunicationChannel>>>();
+    for (const t of templates) {
+      if (!byCategory.has(t.category)) byCategory.set(t.category, new Map());
+      const events = byCategory.get(t.category)!;
+      if (!events.has(t.typeName)) events.set(t.typeName, new Set());
+      events.get(t.typeName)!.add(t.channel);
+    }
+    return byCategory;
+  }, [templates]);
+
+  useEffect(() => {
+    if (typeName || !templates || templates.length === 0) return;
+    setTypeName(templates[0].typeName);
+    setChannel(templates[0].channel);
+  }, [templates, typeName]);
+
+  const variantsForSelection = useMemo(
+    () => (templates ?? []).filter((t) => t.typeName === typeName && t.channel === channel),
+    [templates, typeName, channel],
+  );
+  const availableChannels = useMemo(() => {
+    for (const events of eventsByCategory.values()) {
+      const chans = events.get(typeName);
+      if (chans) return [...chans];
+    }
+    return [];
+  }, [eventsByCategory, typeName]);
+
+  async function handleSeed() {
+    setSeeding(true);
+    setError(null);
+    try {
+      await seedCommunicationTemplates();
+      loadAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSeeding(false);
+    }
+  }
+
+  async function handleSend() {
+    setSending(true);
+    setError(null);
+    setSendSummary(null);
+    try {
+      const audience: AudienceSelector =
+        audienceKind === "single" ? { kind: "single", email: audienceEmail } : { kind: audienceKind };
+      const summary = await sendCommunication({ typeName, channel, audience });
+      setSendSummary(summary);
+      loadAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const historyByTemplateId = useMemo(() => new Map((templates ?? []).map((t) => [t.id, t])), [templates]);
+
+  return (
+    <section className="admin-communications">
+      <h2>End-user communications</h2>
+      <p className="muted">
+        Compose and send templated, A/B-variant messages to end users across email/SMS/push. Copy comes
+        from a seeded reference library of lifecycle communications — this doesn't touch individual
+        accounts or billing.
+      </p>
+
+      {error && <p className="error">{error}</p>}
+
+      {templates && templates.length === 0 && (
+        <button onClick={handleSeed} disabled={seeding}>
+          {seeding ? "Seeding…" : "Seed reference templates"}
+        </button>
+      )}
+
+      {templates && templates.length > 0 && (
+        <div className="comms-composer">
+          <div className="comms-composer-row">
+            <label>
+              Lifecycle event
+              <select
+                value={typeName}
+                onChange={(e) => {
+                  setTypeName(e.target.value);
+                  setSendSummary(null);
+                }}
+              >
+                {[...eventsByCategory.entries()].map(([category, events]) => (
+                  <optgroup label={category} key={category}>
+                    {[...events.keys()].map((name) => (
+                      <option value={name} key={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Channel
+              <select
+                value={channel}
+                onChange={(e) => {
+                  setChannel(e.target.value as CommunicationChannel);
+                  setSendSummary(null);
+                }}
+              >
+                {availableChannels.map((c) => (
+                  <option value={c} key={c}>
+                    {CHANNEL_LABELS[c]}
+                    {channelStatus && !channelStatus[c] ? " (not configured — preview only)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="comms-variants">
+            {variantsForSelection.map((t) => (
+              <div className="comms-variant-card" key={t.id}>
+                <h3>Variant {t.variant}</h3>
+                {t.subject && <p className="comms-variant-subject">{t.subject}</p>}
+                <p className="comms-variant-body">{t.body}</p>
+                {t.variablesUsed.length > 0 && (
+                  <p className="comms-variant-vars muted">Merge fields: {t.variablesUsed.join(", ")}</p>
+                )}
+              </div>
+            ))}
+            {variantsForSelection.length > 1 && (
+              <p className="muted">
+                Recipients are split deterministically across these {variantsForSelection.length} variants.
+              </p>
+            )}
+          </div>
+
+          <div className="comms-composer-row">
+            <label>
+              Audience
+              <select
+                value={audienceKind}
+                onChange={(e) => setAudienceKind(e.target.value as AudienceSelector["kind"])}
+              >
+                <option value="all">All users</option>
+                <option value="active_subscribers">Active subscribers</option>
+                <option value="single">Single user (by email)</option>
+              </select>
+            </label>
+            {audienceKind === "single" && (
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={audienceEmail}
+                  onChange={(e) => setAudienceEmail(e.target.value)}
+                  placeholder="user@example.com"
+                />
+              </label>
+            )}
+          </div>
+
+          <button onClick={handleSend} disabled={sending || (audienceKind === "single" && !audienceEmail.trim())}>
+            {sending ? "Sending…" : "Send"}
+          </button>
+
+          {sendSummary && (
+            <div className="comms-send-summary">
+              <p>
+                Batch <code>{sendSummary.batchId}</code> — {sendSummary.results.length} recipient(s)
+                {!sendSummary.configured && (
+                  <span className="muted"> ({CHANNEL_LABELS[channel]} provider not configured — nothing was actually delivered)</span>
+                )}
+              </p>
+              <ul className="comms-send-status-list">
+                {(["sent", "skipped_no_provider", "failed"] as const).map((status) => {
+                  const count = sendSummary.results.filter((r) => r.status === status).length;
+                  if (count === 0) return null;
+                  return (
+                    <li key={status}>
+                      {count} {status.replace(/_/g, " ")}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {history && history.length > 0 && (
+        <div className="comms-history">
+          <h3>Recent sends</h3>
+          <table className="admin-experiment-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Event</th>
+                <th>Channel</th>
+                <th>Variant</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((send) => (
+                <tr key={send.id}>
+                  <td>{new Date(send.createdAt).toLocaleString()}</td>
+                  <td>{historyByTemplateId.get(send.templateId)?.typeName ?? "—"}</td>
+                  <td>{CHANNEL_LABELS[send.channel]}</td>
+                  <td>{send.variant}</td>
+                  <td>{send.status.replace(/_/g, " ")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function AdminPage() {
   const { user, loading: userLoading } = useAppUser();
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
@@ -139,6 +416,7 @@ export default function AdminPage() {
       )}
 
       <ExperimentResultsSection />
+      <CommunicationsSection />
     </div>
   );
 }
