@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
 import { getBillingStatus, getPlans, openBillingPortal, startCheckout } from "../api/client";
 import type { BillingStatus, Plan } from "../api/types";
-
-function formatPrice(plan: Plan): string {
-  if (plan.amountCents === null) return "Contact us";
-  const amount = (plan.amountCents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: plan.currency.toUpperCase(),
-  });
-  return plan.interval ? `${amount}/${plan.interval}` : amount;
-}
+import { formatPlanPrice } from "../utils/pricing";
 
 // Shown at the top of the schedule page: current plan, free-tier usage
 // (with an escalating nudge as the monthly limit approaches), and a way to
@@ -101,7 +93,7 @@ export default function BillingPanel() {
           {plans.map((plan) => (
             <div className="plan-card" key={plan.id}>
               <h4>{plan.name}</h4>
-              <p className="plan-price">{formatPrice(plan)}</p>
+              <p className="plan-price">{formatPlanPrice(plan)}</p>
               <p className="muted plan-tagline">{plan.tagline}</p>
               <button
                 type="button"

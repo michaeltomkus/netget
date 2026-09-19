@@ -12,8 +12,6 @@ import {
 
 export const billingRouter = Router();
 
-billingRouter.use(requireAuth());
-
 // Sessions created since the 1st of the current calendar month, reset each
 // month rather than a rolling 30 days — simpler to explain to a candidate
 // ("resets on the 1st") than a rolling window.
@@ -33,12 +31,13 @@ export async function checkFreeTierLimit(userId: string): Promise<{ allowed: boo
   return { allowed: used < FREE_TIER_SESSIONS_PER_MONTH, used, limit: FREE_TIER_SESSIONS_PER_MONTH };
 }
 
-// Plan display metadata (name/tagline) is static, but the price itself
-// always comes live from Stripe — so a price change in the dashboard shows
-// up here without a deploy.
+// Public — deliberately registered before requireAuth() below. A pricing
+// page has to be visible to a signed-out visitor; plan display metadata
+// (name/tagline) is static, but the price itself always comes live from
+// Stripe, so a price change in the dashboard shows up here without a deploy.
 billingRouter.get("/plans", async (_req, res) => {
   if (!isStripeConfigured()) {
-    return res.json({ plans: [] });
+    return res.json({ plans: [], freeSessionsPerMonth: FREE_TIER_SESSIONS_PER_MONTH });
   }
   const stripe = getStripeClient();
   try {
@@ -55,12 +54,16 @@ billingRouter.get("/plans", async (_req, res) => {
         };
       }),
     );
-    res.json({ plans });
+    res.json({ plans, freeSessionsPerMonth: FREE_TIER_SESSIONS_PER_MONTH });
   } catch (err) {
     console.error("Failed to load plans from Stripe:", err);
     res.status(502).json({ error: "Failed to load plans", detail: String(err) });
   }
 });
+
+// Every route below requires sign-in — /plans above is the one deliberate
+// exception.
+billingRouter.use(requireAuth());
 
 billingRouter.get("/status", async (req, res) => {
   const userId = req.appUser!.id;

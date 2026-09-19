@@ -118,8 +118,10 @@ used through Phase 6. Sign-in is federated through
 [Clerk](https://clerk.com) (Google and whatever other providers are enabled
 in the Clerk dashboard) — this app never sees or stores a password. Every
 `/api/sessions`, `/api/billing`, `/api/admin`, and `/api/me` route requires
-sign-in; without `CLERK_SECRET_KEY` configured, those routes cleanly 503
-("Sign-in is not configured") rather than the app crashing, same
+sign-in — with one deliberate exception, `GET /api/billing/plans` (public,
+so the landing page's pricing is real before anyone signs in). Without
+`CLERK_SECRET_KEY` configured, the protected routes cleanly 503 ("Sign-in
+is not configured") rather than the app crashing, same
 graceful-degradation pattern as the voice providers. Subscription billing is
 handled entirely by [Stripe](https://stripe.com) Checkout and the Customer
 Portal (both hosted pages) — this app never sees or stores card data, only
@@ -146,6 +148,14 @@ through the Customer Portal ("Manage billing"), never through a second
 Checkout session — creating one while already subscribed would double-bill
 them, so `POST /api/billing/checkout` refuses with 409 if the caller
 already has an active subscription.
+
+**Public landing page**: `/` shows a full marketing page (`frontend/src/pages/LandingPage.tsx`)
+to signed-out visitors — hero, problem/how-it-works, features, live Free/Pro/Premium
+pricing, an FAQ, and a final CTA — with every call-to-action opening Clerk's sign-in
+modal rather than a separate checkout flow; once signed in, a candidate lands on the
+real Schedule page (which has its own billing UI to actually subscribe). A signed-in
+visitor at `/` sees the Schedule page directly, and a signed-out deep link to
+`/session/:id`, `/session/:id/report`, or `/admin` bounces to `/` rather than 404ing.
 
 ## Setup
 

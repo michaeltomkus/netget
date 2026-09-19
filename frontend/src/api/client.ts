@@ -103,7 +103,10 @@ export function getAdminMetrics() {
 }
 
 export function getPlans() {
-  return request<{ plans: Plan[] }>("/api/billing/plans");
+  // Deliberately the one billing endpoint that works signed-out — see
+  // backend routes/billing.ts — so the landing page can show live pricing
+  // before anyone signs in.
+  return request<{ plans: Plan[]; freeSessionsPerMonth: number }>("/api/billing/plans");
 }
 
 export function getBillingStatus() {
