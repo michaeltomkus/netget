@@ -164,6 +164,13 @@ export interface TimeManagement {
   assessment: string;
 }
 
+export interface ImprovementPlan {
+  /** 3-5 concrete, specific practice actions tied to what actually happened this session. */
+  focusAreas: string[];
+  /** 1-2 sentences recommending what kind of session to schedule next. */
+  suggestedNextSessionFocus: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
@@ -178,6 +185,8 @@ export interface GradingResult {
   overallSummary: string;
   topStrengths: string[];
   topGrowthAreas: string[];
+  /** Present only for an active Premium subscriber at grading time — see services/grading/improvementPlan.ts. */
+  improvementPlan?: ImprovementPlan;
 }
 
 // Payload shapes for question generation, exchanged with Claude via tool-use.

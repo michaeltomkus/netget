@@ -214,9 +214,64 @@ body {
   background: color-mix(in srgb, var(--surface) 60%, transparent);
 }
 
+.billing-panel--plans {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .billing-panel p {
   margin: 0;
   font-size: 0.9rem;
+}
+
+.billing-panel p.billing-nudge--warn {
+  color: var(--warning-text);
+  font-weight: 600;
+}
+
+.billing-panel p.billing-nudge--urgent {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.plan-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.plan-card h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.plan-price {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.plan-tagline {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.plan-card button {
+  margin-top: auto;
 }
 
 h1 {
@@ -619,6 +674,33 @@ button.recording {
 
 .answer-preview {
   font-style: italic;
+}
+
+.improvement-plan ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upsell-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 20px;
+  margin: 8px 0 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-ring);
+  background: color-mix(in srgb, var(--accent-1) 6%, var(--surface));
+}
+
+.upsell-box p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  max-width: 46ch;
 }
 
 .composure-row {

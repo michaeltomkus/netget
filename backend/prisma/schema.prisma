@@ -189,4 +189,7 @@ model GradingResult {
   overallSummary       String
   topStrengths         String[]
   topGrowthAreas       String[]
+  /// ImprovementPlan | null — Premium-plan-only, generated post-grading (see
+  /// services/grading/improvementPlan.ts); absent for free/Pro sessions.
+  improvementPlan      Json?
 }

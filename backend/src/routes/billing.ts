@@ -2,10 +2,12 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import * as store from "../db/store.js";
 import {
+  getConfiguredPlan,
   getFrontendBaseUrl,
-  getPaidPriceId,
+  getPlanByPriceId,
   getStripeClient,
   isStripeConfigured,
+  listConfiguredPlans,
 } from "../services/stripe.js";
 
 export const billingRouter = Router();
@@ -31,14 +33,45 @@ export async function checkFreeTierLimit(userId: string): Promise<{ allowed: boo
   return { allowed: used < FREE_TIER_SESSIONS_PER_MONTH, used, limit: FREE_TIER_SESSIONS_PER_MONTH };
 }
 
+// Plan display metadata (name/tagline) is static, but the price itself
+// always comes live from Stripe — so a price change in the dashboard shows
+// up here without a deploy.
+billingRouter.get("/plans", async (_req, res) => {
+  if (!isStripeConfigured()) {
+    return res.json({ plans: [] });
+  }
+  const stripe = getStripeClient();
+  try {
+    const plans = await Promise.all(
+      listConfiguredPlans().map(async (plan) => {
+        const price = await stripe.prices.retrieve(plan.priceId);
+        return {
+          id: plan.id,
+          name: plan.name,
+          tagline: plan.tagline,
+          amountCents: price.unit_amount,
+          currency: price.currency,
+          interval: price.recurring?.interval,
+        };
+      }),
+    );
+    res.json({ plans });
+  } catch (err) {
+    console.error("Failed to load plans from Stripe:", err);
+    res.status(502).json({ error: "Failed to load plans", detail: String(err) });
+  }
+});
+
 billingRouter.get("/status", async (req, res) => {
   const userId = req.appUser!.id;
   const subscription = await store.getActiveSubscriptionForUser(userId);
   const used = await store.countSessionsSince(userId, startOfCurrentMonth());
+  const plan = subscription ? getPlanByPriceId(subscription.stripePriceId) : undefined;
 
   res.json({
     stripeConfigured: isStripeConfigured(),
     subscription,
+    plan,
     freeTier: { used, limit: FREE_TIER_SESSIONS_PER_MONTH },
   });
 });
@@ -47,7 +80,23 @@ billingRouter.post("/checkout", async (req, res) => {
   if (!isStripeConfigured()) {
     return res.status(503).json({ error: "Billing is not configured" });
   }
+  const { planId } = req.body ?? {};
+  const plan = typeof planId === "string" ? getConfiguredPlan(planId) : undefined;
+  if (!plan) {
+    return res.status(400).json({ error: "Unknown or unconfigured planId" });
+  }
+
   const user = req.appUser!;
+
+  // An existing active subscriber who wants to switch plans must go through
+  // the Customer Portal (POST /portal), not a fresh Checkout Session —
+  // creating a second Checkout subscription alongside an existing one would
+  // double-bill them rather than upgrade/downgrade the one they have.
+  const existing = await store.getActiveSubscriptionForUser(user.id);
+  if (existing) {
+    return res.status(409).json({ error: "Already subscribed — manage or switch plans from the billing portal" });
+  }
+
   const stripe = getStripeClient();
   const baseUrl = getFrontendBaseUrl();
 
@@ -66,7 +115,7 @@ billingRouter.post("/checkout", async (req, res) => {
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: getPaidPriceId(), quantity: 1 }],
+      line_items: [{ price: plan.priceId, quantity: 1 }],
       success_url: `${baseUrl}/?checkout=success`,
       cancel_url: `${baseUrl}/?checkout=cancelled`,
       client_reference_id: user.id,

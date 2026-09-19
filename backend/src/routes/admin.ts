@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import * as store from "../db/store.js";
-import { getStripeClient, isStripeConfigured } from "../services/stripe.js";
+import { getPlanByPriceId, getStripeClient, isStripeConfigured } from "../services/stripe.js";
 
 export const adminRouter = Router();
 
@@ -44,10 +44,21 @@ adminRouter.get("/metrics", async (_req, res) => {
     }
   }
 
+  // Per-plan breakdown — "unknown" catches subscriptions whose stripePriceId
+  // no longer matches a configured plan (e.g. a price env var was rotated
+  // out from under an existing subscriber), so the counts always sum to
+  // activeSubscriberCount even as plans change.
+  const subscribersByPlan: Record<string, number> = {};
+  for (const sub of activeSubscriptions) {
+    const planId = getPlanByPriceId(sub.stripePriceId)?.id ?? "unknown";
+    subscribersByPlan[planId] = (subscribersByPlan[planId] ?? 0) + 1;
+  }
+
   res.json({
     totalUsers,
     activeSubscriberCount: activeSubscriptions.length,
     freeUserCount: totalUsers - activeSubscriptions.length,
+    subscribersByPlan,
     sessionsThisMonth,
     sessionsAllTime,
     mrrCents,

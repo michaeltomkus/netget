@@ -125,12 +125,27 @@ handled entirely by [Stripe](https://stripe.com) Checkout and the Customer
 Portal (both hosted pages) — this app never sees or stores card data, only
 the resulting subscription id/status/price from Stripe webhooks. There's a
 free tier (3 sessions/calendar month by default, see
-`FREE_TIER_SESSIONS_PER_MONTH` in `backend/src/routes/billing.ts`); an
-active subscription lifts that limit. An admin dashboard at `/admin`
-(role granted via the `ADMIN_EMAILS` allowlist at first sign-in) shows
-revenue/usage metrics (MRR, active subscriber count, session volume) —
-deliberately metrics-only, with no manual comp/grant or cancel/refund
-actions, per the scope this was built to.
+`FREE_TIER_SESSIONS_PER_MONTH` in `backend/src/routes/billing.ts`), with an
+in-app nudge that escalates as the limit approaches (1 left, then 0 left)
+rather than only messaging once the candidate is actually blocked. An
+admin dashboard at `/admin` (role granted via the `ADMIN_EMAILS` allowlist
+at first sign-in) shows revenue/usage metrics (MRR, active subscriber
+count and a per-plan breakdown, session volume) — deliberately
+metrics-only, with no manual comp/grant or cancel/refund actions, per the
+scope this was built to.
+
+**Two paid tiers** (post-launch): **Pro** (unlimited sessions) and
+**Premium** (unlimited sessions plus a personalized AI-generated practice
+plan attached to every report card — 3-5 concrete next steps tied to what
+actually happened in that session, and a recommendation for what to
+schedule next). Plan display metadata (name/tagline) lives in
+`backend/src/services/stripe.ts`; the price itself always comes live from
+Stripe via `GET /api/billing/plans`, so changing an amount in the Stripe
+dashboard needs no deploy. An already-subscribed candidate switches plans
+through the Customer Portal ("Manage billing"), never through a second
+Checkout session — creating one while already subscribed would double-bill
+them, so `POST /api/billing/checkout` refuses with 409 if the caller
+already has an active subscription.
 
 ## Setup
 

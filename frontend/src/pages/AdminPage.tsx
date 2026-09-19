@@ -46,6 +46,12 @@ export default function AdminPage() {
             <span className="admin-metric-value">{metrics.activeSubscriberCount}</span>
             <span className="admin-metric-label">Active subscribers</span>
           </div>
+          {Object.entries(metrics.subscribersByPlan).map(([planId, count]) => (
+            <div className="admin-metric" key={planId}>
+              <span className="admin-metric-value">{count}</span>
+              <span className="admin-metric-label">{planId} subscribers</span>
+            </div>
+          ))}
           <div className="admin-metric">
             <span className="admin-metric-value">{metrics.totalUsers}</span>
             <span className="admin-metric-label">Total users</span>

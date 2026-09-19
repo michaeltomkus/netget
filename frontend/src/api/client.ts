@@ -5,6 +5,7 @@ import type {
   CandidateQuestion,
   DynamicFollowUp,
   GradingResult,
+  Plan,
   PresentationSignals,
   ResponseRecord,
   Seniority,
@@ -101,12 +102,19 @@ export function getAdminMetrics() {
   return request<AdminMetrics>("/api/admin/metrics");
 }
 
+export function getPlans() {
+  return request<{ plans: Plan[] }>("/api/billing/plans");
+}
+
 export function getBillingStatus() {
   return request<BillingStatus>("/api/billing/status");
 }
 
-export function startCheckout() {
-  return request<{ url: string }>("/api/billing/checkout", { method: "POST" });
+export function startCheckout(planId: string) {
+  return request<{ url: string }>("/api/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ planId }),
+  });
 }
 
 export function openBillingPortal() {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getReport } from "../api/client";
+import { getBillingStatus, getReport, startCheckout } from "../api/client";
 import type { CandidateQuestion, GradingResult, ResponseRecord, Session } from "../api/types";
 
 interface ReportData {
@@ -15,6 +15,12 @@ export default function ReportPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Whether the candidate is already Premium — gates the upsell below so it
+  // never shows to someone who already has the feature (e.g. if a transient
+  // Claude failure meant no plan came back for this particular session).
+  const [isPremium, setIsPremium] = useState(false);
+  const [upsellBusy, setUpsellBusy] = useState(false);
+  const [upsellError, setUpsellError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -22,7 +28,22 @@ export default function ReportPage() {
       .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
+    getBillingStatus()
+      .then((status) => setIsPremium(status.plan?.id === "premium"))
+      .catch(() => setIsPremium(false));
   }, [sessionId]);
+
+  async function onUpgrade() {
+    setUpsellBusy(true);
+    setUpsellError(null);
+    try {
+      const { url } = await startCheckout("premium");
+      window.location.href = url;
+    } catch (err) {
+      setUpsellError(err instanceof Error ? err.message : String(err));
+      setUpsellBusy(false);
+    }
+  }
 
   if (loading) return <div className="card">Loading report…</div>;
   if (error) return <div className="card error">{error}</div>;
@@ -61,6 +82,36 @@ export default function ReportPage() {
           </ul>
         </div>
       </div>
+
+      {result.improvementPlan ? (
+        <>
+          <h2>Your practice plan</h2>
+          <div className="grade-block improvement-plan">
+            <ul>
+              {result.improvementPlan.focusAreas.map((area, i) => (
+                <li key={i}>{area}</li>
+              ))}
+            </ul>
+            <p className="muted">{result.improvementPlan.suggestedNextSessionFocus}</p>
+          </div>
+        </>
+      ) : (
+        !isPremium && (
+          <div className="upsell-box">
+            <div>
+              <strong>Want a personalized practice plan?</strong>
+              <p className="muted">
+                Premium turns this report into a specific practice plan — concrete next steps tied
+                to what actually happened in this session, plus what to schedule next.
+              </p>
+            </div>
+            <button type="button" onClick={onUpgrade} disabled={upsellBusy} className="secondary">
+              {upsellBusy ? "Redirecting…" : "Upgrade to Premium"}
+            </button>
+            {upsellError && <p className="error">{upsellError}</p>}
+          </div>
+        )
+      )}
 
       <h2>Time management</h2>
       <div className="grade-block">

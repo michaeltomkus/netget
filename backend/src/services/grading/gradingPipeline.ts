@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
 import * as store from "../../db/store.js";
 import { deletePresentationFrames } from "../media.js";
-import type { ComposureGrade, GradingResult, PresentationGrade, Question } from "../../types.js";
+import { getPlanByPriceId } from "../stripe.js";
+import type { ComposureGrade, GradingResult, ImprovementPlan, PresentationGrade, Question } from "../../types.js";
 import { gradeResponse } from "./contentGrading.js";
 import { gradePresentation } from "./presentationGrading.js";
 import { gradeComposure } from "./composureGrading.js";
 import { synthesizeSessionSummary } from "./sessionSummary.js";
+import { synthesizeImprovementPlan } from "./improvementPlan.js";
 
 // Phase 1: synchronous, in-process grading. Later phases move this behind a
 // queue (per docs/ARCHITECTURE.md §1.2 step 9) once sessions include
@@ -81,6 +83,20 @@ export async function runGradingPipeline(sessionId: string): Promise<GradingResu
     }
   }
 
+  // Premium-only: a deeper, personalized practice plan on top of the
+  // standard summary. Its own Opus call gated on an active Premium
+  // subscription so free/Pro sessions never incur (or wait on) it.
+  let improvementPlan: ImprovementPlan | undefined;
+  const activeSub = await store.getActiveSubscriptionForUser(session.userId);
+  const plan = activeSub ? getPlanByPriceId(activeSub.stripePriceId) : undefined;
+  if (plan?.id === "premium") {
+    try {
+      improvementPlan = await synthesizeImprovementPlan(questions, responses, perQuestion, summaryRest);
+    } catch (err) {
+      console.warn(`Improvement plan skipped for session ${sessionId}: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
   const result: GradingResult = {
     id: uuidv4(),
     sessionId,
@@ -94,6 +110,7 @@ export async function runGradingPipeline(sessionId: string): Promise<GradingResu
       assessment: timeManagementAssessment,
     },
     ...summaryRest,
+    improvementPlan,
   };
 
   await store.saveGradingResult(result);

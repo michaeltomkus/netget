@@ -79,6 +79,11 @@ export interface TimeManagement {
   assessment: string;
 }
 
+export interface ImprovementPlan {
+  focusAreas: string[];
+  suggestedNextSessionFocus: string;
+}
+
 export interface GradingResult {
   id: string;
   sessionId: string;
@@ -91,6 +96,8 @@ export interface GradingResult {
   overallSummary: string;
   topStrengths: string[];
   topGrowthAreas: string[];
+  /** Premium-plan-only — see backend services/grading/improvementPlan.ts. */
+  improvementPlan?: ImprovementPlan;
 }
 
 export interface Subscription {
@@ -101,9 +108,20 @@ export interface Subscription {
   cancelAtPeriodEnd: boolean;
 }
 
+export interface Plan {
+  id: string;
+  name: string;
+  tagline: string;
+  amountCents: number | null;
+  currency: string;
+  interval?: string;
+}
+
 export interface BillingStatus {
   stripeConfigured: boolean;
   subscription?: Subscription;
+  /** The plan the caller's active subscription resolves to, if any. */
+  plan?: { id: string; name: string; tagline: string };
   freeTier: { used: number; limit: number };
 }
 
@@ -118,6 +136,7 @@ export interface AdminMetrics {
   totalUsers: number;
   activeSubscriberCount: number;
   freeUserCount: number;
+  subscribersByPlan: Record<string, number>;
   sessionsThisMonth: number;
   sessionsAllTime: number;
   mrrCents?: number;

@@ -14,6 +14,7 @@ import type {
   PresentationGrade,
   ComposureGrade,
   TimeManagement,
+  ImprovementPlan,
 } from "../types.js";
 
 // Prisma-backed store, replacing the flat-JSON-file version used through
@@ -405,6 +406,7 @@ function mapGradingResult(row: {
   overallSummary: string;
   topStrengths: string[];
   topGrowthAreas: string[];
+  improvementPlan: unknown;
 }): GradingResult {
   return {
     id: row.id,
@@ -418,6 +420,7 @@ function mapGradingResult(row: {
     overallSummary: row.overallSummary,
     topStrengths: row.topStrengths,
     topGrowthAreas: row.topGrowthAreas,
+    improvementPlan: (row.improvementPlan as ImprovementPlan | null) ?? undefined,
   };
 }
 
@@ -435,6 +438,7 @@ export async function saveGradingResult(result: GradingResult): Promise<void> {
       overallSummary: result.overallSummary,
       topStrengths: result.topStrengths,
       topGrowthAreas: result.topGrowthAreas,
+      improvementPlan: (result.improvementPlan as unknown as object) ?? undefined,
     },
   });
 }
