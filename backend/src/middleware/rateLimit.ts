@@ -59,3 +59,16 @@ export const jobRoleRequestLimiter = rateLimit({
   keyGenerator: userOrIpKey,
   message: { error: "Too many role requests — please wait a few minutes and try again." },
 });
+
+// A/B experiment exposure/conversion logging (routes/experiments.ts) has to
+// work signed-out (a landing-page experiment fires before anyone's
+// identified) — generous but bounded against a scripted loop skewing
+// results, since there's no free-tier-style gate in front of it either.
+export const experimentEventLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+  message: { error: "Too many requests." },
+});

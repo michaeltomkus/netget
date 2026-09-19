@@ -1,12 +1,79 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { getAdminMetrics } from "../api/client";
-import type { AdminMetrics } from "../api/types";
+import { getAdminExperiments, getAdminMetrics, getExperimentResults } from "../api/client";
+import type { AdminMetrics, ExperimentResults } from "../api/types";
 import { useAppUser } from "../hooks/useAppUser";
 
 function formatCents(cents: number | undefined): string {
   if (cents === undefined) return "—";
   return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatRate(conversions: number, exposures: number): string {
+  if (exposures === 0) return "—";
+  return `${((conversions / exposures) * 100).toFixed(1)}%`;
+}
+
+/** Read-only — same "metrics only" posture as the rest of this dashboard; there's nothing here to start, stop, or edit. */
+function ExperimentResultsSection() {
+  const [results, setResults] = useState<ExperimentResults[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAdminExperiments()
+      .then(({ experiments }) => Promise.all(experiments.map((e) => getExperimentResults(e.key))))
+      .then(setResults)
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }, []);
+
+  if (error) return <p className="error">{error}</p>;
+  if (!results) return null;
+  if (results.length === 0) return null;
+
+  return (
+    <section className="admin-experiments">
+      <h2>A/B experiments</h2>
+      {results.map((r) => {
+        const goals = [...new Set(r.conversions.map((c) => c.goal))];
+        return (
+          <div className="admin-experiment-card" key={r.experimentKey}>
+            <h3>{r.experimentKey}</h3>
+            <p className="muted">{r.description}</p>
+            <table className="admin-experiment-table">
+              <thead>
+                <tr>
+                  <th>Variant</th>
+                  <th>Exposures</th>
+                  {goals.map((g) => (
+                    <th key={g}>{g}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {r.variants.map((variant) => {
+                  const exposures = r.exposures[variant] ?? 0;
+                  return (
+                    <tr key={variant}>
+                      <td>{variant}</td>
+                      <td>{exposures}</td>
+                      {goals.map((g) => {
+                        const count = r.conversions.find((c) => c.variant === variant && c.goal === g)?.count ?? 0;
+                        return (
+                          <td key={g}>
+                            {count} ({formatRate(count, exposures)})
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+    </section>
+  );
 }
 
 export default function AdminPage() {
@@ -70,6 +137,8 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      <ExperimentResultsSection />
     </div>
   );
 }

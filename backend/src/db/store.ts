@@ -717,6 +717,62 @@ export async function incrementBankQuestionUsage(ids: string[]): Promise<void> {
   await prisma.bankQuestion.updateMany({ where: { id: { in: ids } }, data: { timesUsed: { increment: 1 } } });
 }
 
+// ---- A/B testing ----
+
+/** First exposure for a (experiment, subject) wins — a repeat call (e.g. a page revisit) is a no-op, not a second row. */
+export async function recordExperimentExposure(params: {
+  experimentKey: string;
+  variant: string;
+  subjectId: string;
+}): Promise<void> {
+  await prisma.experimentExposure.upsert({
+    where: { experimentKey_subjectId: { experimentKey: params.experimentKey, subjectId: params.subjectId } },
+    update: {},
+    create: params,
+  });
+}
+
+/** Same one-row-per-subject reasoning as exposure, scoped per goal — a subject converting on the same goal repeatedly still only counts once. */
+export async function recordExperimentConversion(params: {
+  experimentKey: string;
+  variant: string;
+  subjectId: string;
+  goal: string;
+}): Promise<void> {
+  await prisma.experimentConversion.upsert({
+    where: {
+      experimentKey_goal_subjectId: {
+        experimentKey: params.experimentKey,
+        goal: params.goal,
+        subjectId: params.subjectId,
+      },
+    },
+    update: {},
+    create: params,
+  });
+}
+
+/** Unique-subject exposure count per variant — a plain group-by count, since the @@unique constraint already guarantees one row per subject. */
+export async function getExperimentExposureCounts(experimentKey: string): Promise<Record<string, number>> {
+  const rows = await prisma.experimentExposure.groupBy({
+    by: ["variant"],
+    where: { experimentKey },
+    _count: { _all: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.variant, r._count._all]));
+}
+
+export async function getExperimentConversionCounts(
+  experimentKey: string,
+): Promise<{ variant: string; goal: string; count: number }[]> {
+  const rows = await prisma.experimentConversion.groupBy({
+    by: ["variant", "goal"],
+    where: { experimentKey },
+    _count: { _all: true },
+  });
+  return rows.map((r) => ({ variant: r.variant, goal: r.goal, count: r._count._all }));
+}
+
 // Kept as a namespace object too, for call sites that prefer `store.method()`
 // over named imports — both work identically.
 export const store = {
@@ -757,4 +813,8 @@ export const store = {
   createBankQuestions,
   setBankQuestionAudio,
   incrementBankQuestionUsage,
+  recordExperimentExposure,
+  recordExperimentConversion,
+  getExperimentExposureCounts,
+  getExperimentConversionCounts,
 };

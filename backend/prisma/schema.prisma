@@ -289,3 +289,45 @@ model GradingResult {
   /// services/grading/improvementPlan.ts); absent for free/Pro sessions.
   improvementPlan      Json?
 }
+
+// A/B testing — experiments themselves are defined in code, not here (see
+// backend/src/services/experiments.ts + frontend/src/experiments/experiments.ts),
+// so adding a new experiment needs no migration. These two tables are purely
+// the event log: which variant a subject (a signed-in user's id, or an
+// anonymous client-generated id for a signed-out visitor — see
+// frontend/src/experiments/subjectId.ts) was bucketed into, and whether they
+// later hit a named conversion goal. Variant assignment itself happens
+// client-side (a pure deterministic hash of experimentKey+subjectId) — the
+// backend only ever records what the client reports, after checking it
+// against the code registry, never computes or stores the bucketing itself.
+
+/// One row per (experiment, subject) — @@unique means a repeat exposure
+/// call (e.g. a page revisit) is a no-op, not a second row, so a plain
+/// row count is already "unique subjects exposed," no COUNT(DISTINCT)
+/// needed when reading results.
+model ExperimentExposure {
+  id            String   @id @default(uuid())
+  experimentKey String
+  variant       String
+  subjectId     String
+  createdAt     DateTime @default(now())
+
+  @@unique([experimentKey, subjectId])
+  @@index([experimentKey, variant])
+}
+
+/// One row per (experiment, goal, subject) — same one-row-per-subject
+/// reasoning as above, scoped per goal: a subject who triggers the same
+/// goal many times (e.g. "created_session") still only counts once toward
+/// that goal's conversion rate.
+model ExperimentConversion {
+  id            String   @id @default(uuid())
+  experimentKey String
+  variant       String
+  subjectId     String
+  goal          String
+  createdAt     DateTime @default(now())
+
+  @@unique([experimentKey, goal, subjectId])
+  @@index([experimentKey, variant, goal])
+}

@@ -251,6 +251,38 @@ Deliberately **not** built in this pass, and why:
   `AdminPage.tsx`); building write-actions there would reverse that decision, so
   it wasn't done without confirming that's actually wanted.
 
+**A/B testing infrastructure**: a lightweight, general-purpose way to test different copy,
+layout, or a whole page against real end-user response — not a one-off, hard-coded experiment.
+
+- **Experiments are code, not content.** Both `backend/src/services/experiments.ts` and its
+  frontend mirror `frontend/src/experiments/experiments.ts` define a small registry — key,
+  description, variant list. Adding an experiment is a code change and a deploy, never a
+  migration; the two DB tables (`ExperimentExposure`, `ExperimentConversion`) only ever store
+  raw events, validated against this registry.
+- **Assignment is client-side and needs no round trip.** `useExperiment(key)`
+  (`frontend/src/experiments/useExperiment.ts`) buckets the caller with a pure, deterministic
+  hash of `experimentKey + subjectId` (equal-weighted across variants) — the same subject
+  always lands in the same bucket, computed instantly on render, no backend call just to know
+  which variant to show. Subject identity is the signed-in user's id once known, or a stable
+  per-browser anonymous id before that (`localStorage`, see `experiments/subjectId.ts`) — a
+  disclosed limitation of that: a signed-out exposure and a later signed-in conversion for the
+  same physical person aren't automatically linked, since the id changes at sign-in.
+- **One hook works for a whole page or one sub-component.** Call `useExperiment` once near
+  the top of a page and branch its content on the result, or call it wherever one smaller
+  component lives instead — same pattern either way. `LandingPage.tsx`'s hero section
+  (`landing-hero-copy`) is a real, wired example: two full copy variants (headline, subhead,
+  primary CTA text) for the same page, with `logConversion("hero_cta_click")` firing when the
+  primary CTA is clicked.
+- **Metrics captured server-side, read-only in the admin dashboard.** Exposure and conversion
+  events post to `POST /api/experiments/{exposure,conversion}` — deliberately signed-out-
+  reachable (an experiment can run before anyone's identified) and rate-limited instead of
+  gated behind auth. Each table is unique per `(experiment[, goal], subject)`, so a page
+  revisit or a repeat conversion never inflates the count — a plain row count already is
+  "unique subjects." `/admin` now has an **A/B experiments** section (`GET
+  /api/admin/experiments/:key/results`) showing exposures and conversion rate per variant —
+  same read-only, metrics-only posture as the rest of that dashboard; nothing there can start,
+  stop, or edit an experiment.
+
 **Operational hardening**: rate limiting (`express-rate-limit`), a real automated test
 suite, CI, and error monitoring — the highest-priority engineering/ops gaps once this
 stopped being a toy.

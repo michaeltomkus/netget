@@ -186,3 +186,20 @@ export interface AdminMetrics {
   sessionsAllTime: number;
   mrrCents?: number;
 }
+
+/** Mirrors backend services/experiments.ts's registry shape. */
+export interface ExperimentDefinition {
+  key: string;
+  description: string;
+  variants: string[];
+}
+
+export interface ExperimentResults {
+  experimentKey: string;
+  description: string;
+  variants: string[];
+  /** Unique-subject exposure count per variant. */
+  exposures: Record<string, number>;
+  /** Unique-subject conversion count per (variant, goal). */
+  conversions: { variant: string; goal: string; count: number }[];
+}

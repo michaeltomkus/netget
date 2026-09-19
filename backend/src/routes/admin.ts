@@ -2,6 +2,8 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import * as store from "../db/store.js";
 import { getPlanByPriceId, getStripeClient, isStripeConfigured } from "../services/stripe.js";
+import { EXPERIMENTS, getExperiment } from "../services/experiments.js";
+import type { ExperimentResults } from "../types.js";
 
 export const adminRouter = Router();
 
@@ -63,4 +65,31 @@ adminRouter.get("/metrics", async (_req, res) => {
     sessionsAllTime,
     mrrCents,
   });
+});
+
+// A/B experiment results — read-only, same "metrics only" posture as
+// /metrics above: this lists what's defined and what happened, nothing
+// here can create, edit, or stop an experiment (that's a code change to
+// services/experiments.ts).
+adminRouter.get("/experiments", (_req, res) => {
+  res.json({ experiments: EXPERIMENTS });
+});
+
+adminRouter.get("/experiments/:key/results", async (req, res) => {
+  const experiment = getExperiment(req.params.key);
+  if (!experiment) return res.status(404).json({ error: "Unknown experiment" });
+
+  const [exposures, conversions] = await Promise.all([
+    store.getExperimentExposureCounts(experiment.key),
+    store.getExperimentConversionCounts(experiment.key),
+  ]);
+
+  const results: ExperimentResults = {
+    experimentKey: experiment.key,
+    description: experiment.description,
+    variants: experiment.variants,
+    exposures,
+    conversions,
+  };
+  res.json(results);
 });

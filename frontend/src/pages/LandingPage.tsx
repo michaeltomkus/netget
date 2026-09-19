@@ -5,6 +5,26 @@ import { getPlans } from "../api/client";
 import type { Plan } from "../api/types";
 import { formatPlanPrice } from "../utils/pricing";
 import { setPendingCheckoutPlan } from "../utils/checkoutIntent";
+import { useExperiment } from "../experiments/useExperiment";
+
+// A/B-tested hero section — see experiments/experiments.ts's
+// "landing-hero-copy" entry and useExperiment's usage below. Demonstrates
+// testing a page sub-component: only this section's copy varies, the rest
+// of the page is shared between variants.
+const HERO_COPY = {
+  control: {
+    eyebrow: "AI mock interviews · voice only",
+    headline: "Walk into your next interview already having done it.",
+    lede: "InterviewAI asks the questions out loud, times you, and pushes back when it counts. You answer by voice — no typing, no reading ahead — then get a graded report card on content, delivery, and composure.",
+    cta: "Start practicing — free",
+  },
+  direct: {
+    eyebrow: "Practice under real pressure",
+    headline: "Stop guessing how the interview will go.",
+    lede: "Answer out loud against questions that push back mid-answer, then get a graded report card on exactly what to fix — before it's the real thing.",
+    cta: "Try it free — 2 minutes",
+  },
+} as const;
 
 const NAV_LINKS = [
   { href: "#how-it-works", label: "How it works" },
@@ -175,14 +195,20 @@ function CtaButton({
   children,
   className,
   planId,
+  onClick,
 }: {
   children: ReactNode;
   className: string;
   planId?: string;
+  /** Fired via onClickCapture (see planId above) — e.g. an A/B experiment's logConversion(). */
+  onClick?: () => void;
 }) {
   return (
     <span
-      onClickCapture={planId ? () => setPendingCheckoutPlan(planId) : undefined}
+      onClickCapture={() => {
+        if (planId) setPendingCheckoutPlan(planId);
+        onClick?.();
+      }}
       style={{ display: "contents" }}
     >
       <SignInButton mode="modal">
@@ -239,6 +265,9 @@ export default function LandingPage() {
   const proPlan = plans.find((p) => p.id === "pro");
   const premiumPlan = plans.find((p) => p.id === "premium");
 
+  const { variant: heroVariant, logConversion: logHeroConversion } = useExperiment("landing-hero-copy");
+  const hero = HERO_COPY[heroVariant];
+
   return (
     <div className="landing">
       <header className="landing-nav">
@@ -281,15 +310,13 @@ export default function LandingPage() {
       <section id="top" className="landing-hero">
         <div className="landing-container landing-hero-grid">
           <div>
-            <span className="eyebrow">AI mock interviews · voice only</span>
-            <h1 className="landing-h1">Walk into your next interview already having done it.</h1>
-            <p className="landing-lede">
-              InterviewAI asks the questions out loud, times you, and pushes back when it counts. You answer by
-              voice — no typing, no reading ahead — then get a graded report card on content, delivery, and
-              composure.
-            </p>
+            <span className="eyebrow">{hero.eyebrow}</span>
+            <h1 className="landing-h1">{hero.headline}</h1>
+            <p className="landing-lede">{hero.lede}</p>
             <div className="landing-hero-ctas">
-              <CtaButton className="">Start practicing — free</CtaButton>
+              <CtaButton className="" onClick={() => logHeroConversion("hero_cta_click")}>
+                {hero.cta}
+              </CtaButton>
               <a href="#how-it-works" className="secondary landing-btn-link">
                 See how it works
               </a>

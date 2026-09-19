@@ -272,3 +272,15 @@ export interface RoleClassification {
   saturationScore: number;
   rationale: string;
 }
+
+// A/B testing — see services/experiments.ts for the registry these events are validated against.
+
+export interface ExperimentResults {
+  experimentKey: string;
+  description: string;
+  variants: string[];
+  /** Unique-subject exposure count per variant. */
+  exposures: Record<string, number>;
+  /** Unique-subject conversion count per (variant, goal). */
+  conversions: { variant: string; goal: string; count: number }[];
+}

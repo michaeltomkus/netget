@@ -5,6 +5,8 @@ import type {
   BillingStatus,
   CandidateQuestion,
   DynamicFollowUp,
+  ExperimentDefinition,
+  ExperimentResults,
   GradingResult,
   JobRole,
   Plan,
@@ -177,4 +179,29 @@ export function getReport(sessionId: string) {
     responses: ResponseRecord[];
     result: GradingResult;
   }>(`/api/sessions/${sessionId}/report`);
+}
+
+// A/B testing — see frontend/src/experiments/useExperiment.ts, the actual
+// call site for these. Both work signed-out (no auth required server-side).
+
+export function logExperimentExposure(experimentKey: string, variant: string, subjectId: string) {
+  return request<void>("/api/experiments/exposure", {
+    method: "POST",
+    body: JSON.stringify({ experimentKey, variant, subjectId }),
+  });
+}
+
+export function logExperimentConversion(experimentKey: string, variant: string, subjectId: string, goal: string) {
+  return request<void>("/api/experiments/conversion", {
+    method: "POST",
+    body: JSON.stringify({ experimentKey, variant, subjectId, goal }),
+  });
+}
+
+export function getAdminExperiments() {
+  return request<{ experiments: ExperimentDefinition[] }>("/api/admin/experiments");
+}
+
+export function getExperimentResults(key: string) {
+  return request<ExperimentResults>(`/api/admin/experiments/${key}/results`);
 }
