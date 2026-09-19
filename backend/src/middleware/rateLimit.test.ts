@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { createSessionLimiter } from "./rateLimit.js";
+import { communicationSendLimiter, createSessionLimiter } from "./rateLimit.js";
 
 function buildApp() {
   const app = express();
@@ -26,5 +26,30 @@ describe("createSessionLimiter", () => {
     const blocked = await request(app).post("/api/sessions");
     expect(blocked.status).toBe(429);
     expect(blocked.body.error).toMatch(/too many sessions/i);
+  });
+});
+
+describe("communicationSendLimiter", () => {
+  function buildCommsApp() {
+    const app = express();
+    app.post("/api/admin/communications/send", communicationSendLimiter, (_req, res) => {
+      res.status(200).json({ ok: true });
+    });
+    return app;
+  }
+
+  it("allows requests under the limit and blocks the one that exceeds it", async () => {
+    const app = buildCommsApp();
+
+    // The real limiter allows 20 requests per window; same shared-IP-bucket
+    // reasoning as createSessionLimiter's test above.
+    for (let i = 0; i < 20; i++) {
+      const res = await request(app).post("/api/admin/communications/send");
+      expect(res.status).toBe(200);
+    }
+
+    const blocked = await request(app).post("/api/admin/communications/send");
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error).toMatch(/too many communication sends/i);
   });
 });

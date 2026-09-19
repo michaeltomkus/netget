@@ -19,6 +19,7 @@ import type {
   ExperimentResults,
 } from "../api/types";
 import { useAppUser } from "../hooks/useAppUser";
+import { channelsForEvent, groupTemplatesByCategory } from "../utils/communications";
 
 function formatCents(cents: number | undefined): string {
   if (cents === undefined) return "—";
@@ -129,17 +130,7 @@ function CommunicationsSection() {
   useEffect(loadAll, []);
 
   // Lifecycle event -> category, and which channels have copy for it.
-  const eventsByCategory = useMemo(() => {
-    if (!templates) return new Map<string, Map<string, Set<CommunicationChannel>>>();
-    const byCategory = new Map<string, Map<string, Set<CommunicationChannel>>>();
-    for (const t of templates) {
-      if (!byCategory.has(t.category)) byCategory.set(t.category, new Map());
-      const events = byCategory.get(t.category)!;
-      if (!events.has(t.typeName)) events.set(t.typeName, new Set());
-      events.get(t.typeName)!.add(t.channel);
-    }
-    return byCategory;
-  }, [templates]);
+  const eventsByCategory = useMemo(() => groupTemplatesByCategory(templates ?? []), [templates]);
 
   useEffect(() => {
     if (typeName || !templates || templates.length === 0) return;
@@ -151,13 +142,10 @@ function CommunicationsSection() {
     () => (templates ?? []).filter((t) => t.typeName === typeName && t.channel === channel),
     [templates, typeName, channel],
   );
-  const availableChannels = useMemo(() => {
-    for (const events of eventsByCategory.values()) {
-      const chans = events.get(typeName);
-      if (chans) return [...chans];
-    }
-    return [];
-  }, [eventsByCategory, typeName]);
+  const availableChannels = useMemo(
+    () => channelsForEvent(eventsByCategory, typeName),
+    [eventsByCategory, typeName],
+  );
 
   async function handleSeed() {
     setSeeding(true);
